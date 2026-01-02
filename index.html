@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIXEL-LOG PROJECT</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Firebase SDK v10 -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&family=Gowun+Batang:wght@400;700&family=Montserrat:wght@700;800;900&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'navy-dark': 'var(--bg-main)',
+                        'navy-light': 'var(--bg-card)',
+                        'navy-muted': 'var(--bg-button)',
+                        'primary-gold': 'var(--primary-gold)',
+                        'success': 'var(--success)',
+                    },
+                    fontFamily: {
+                        'pj': ['"Plus Jakarta Sans"', 'sans-serif'],
+                        'batang': ['"Gowun Batang"', 'serif'],
+                        'mont': ['"Montserrat"', 'sans-serif'],
+                    },
+                    animation: {
+                        'fast-pulse': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'shine': 'shine 1.5s infinite',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        shine: {
+                            '100%': { left: '125%' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="min-h-screen flex flex-col">
+
+    <!-- Hero Section -->
+    <header class="relative h-[60vh] flex items-center justify-center overflow-hidden bg-navy-dark">
+        <!-- Background Video -->
+        <video autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover z-0 opacity-60"
+            poster="assets/logo_1.png" onerror="this.style.display='none'">
+            <source src="assets/hero-bg.mp4" type="video/mp4">
+        </video>
+
+        <!-- Animated Background Fallback / Overlay -->
+        <div
+            class="absolute inset-0 bg-gradient-to-b from-transparent via-navy-dark/50 to-navy-dark z-0 pointer-events-none">
+        </div>
+        <div class="absolute inset-0 bg-black/40 z-0 pointer-events-none"></div>
+
+        <!-- Breathing Glow Effect (Fallback aesthetics) -->
+        <div class="absolute w-[600px] h-[600px] bg-primary-gold/10 rounded-full blur-[100px] animate-pulse-slow z-0">
+        </div>
+
+        <!-- Auth Actions (Top Right) -->
+        <div class="absolute top-8 right-8 z-30 flex items-center gap-4">
+            <div id="user-info"
+                class="hidden flex items-center gap-2 bg-navy-muted/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-navy-muted">
+                <img id="user-photo" src="" class="w-6 h-6 rounded-full border border-primary-gold">
+                <span id="user-name" class="text-xs text-white font-pj font-medium"></span>
+            </div>
+            <button id="auth-btn" onclick="handleAuthClick()"
+                class="px-5 py-2 rounded-full border border-primary-gold/50 text-primary-gold text-sm font-bold font-pj hover:bg-primary-gold hover:text-navy-dark transition-all duration-300">
+                Google 로그인
+            </button>
+        </div>
+
+        <img src="assets/only white logo.png" alt="Pixel Log Logo" onclick="window.location.reload()"
+            class="absolute top-8 left-8 z-30 w-44 h-auto opacity-95 hover:opacity-100 transition-opacity duration-300 hidden md:block cursor-pointer">
+
+        <div class="relative z-10 text-center px-4 animate-fade-in-up mt-8">
+            <h1
+                class="text-5xl md:text-8xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-100 to-gray-300 drop-shadow-sm tracking-tight leading-[1.1] font-mont uppercase">
+                NOT YOUR FAULT.<br class="hidden md:block">A LACK OF SYSTEM.
+            </h1>
+            <p
+                class="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto font-light leading-relaxed font-pj tracking-wide">
+                Stop relying on fragile will.<br>
+                Build your <span class="text-primary-gold font-bold">Growth System</span> with Pixel Log.
+            </p>
+
+            <button onclick="openModal()"
+                class="mt-10 group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-200 bg-primary-gold font-pj rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-gold shadow-lg hover:shadow-primary-gold/40 hover:-translate-y-1">
+                <div
+                    class="absolute transition-all duration-200 rounded-full -inset-px bg-gradient-to-r from-yellow-300 to-yellow-600 group-hover:opacity-70 group-hover:-inset-1">
+                </div>
+                <div class="relative inline-flex items-center gap-2 text-lg">
+                    <span>+ 새 프로젝트 시작하기</span>
+                    <i data-lucide="arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform"></i>
+                </div>
+            </button>
+        </div>
+    </header>
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-12 z-10">
+
+        <!-- Dashboard Section -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 animate-fade-in-up">
+            <!-- Total Projects -->
+            <div
+                class="relative bg-navy-light rounded-2xl p-8 border border-navy-muted hover:border-primary-gold/50 shadow-xl transition-all duration-300 group overflow-hidden">
+                <div
+                    class="absolute right-0 top-0 p-4 opacity-10 transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition-transform duration-700">
+                    <i data-lucide="layers" class="w-40 h-40 text-primary-gold"></i>
+                </div>
+                <div class="relative z-10 flex flex-col justify-between h-full min-h-[140px]">
+                    <p class="text-primary-gold text-sm font-bold uppercase tracking-wider mb-2">Total Projects</p>
+                    <h3 class="text-6xl font-black stat-value tracking-tight" id="stat-total">0</h3>
+                    <p class="text-gray-500 text-xs mt-2">Manage your goals efficiently</p>
+                </div>
+            </div>
+
+            <!-- Average Progress (Chart) -->
+            <div
+                class="relative bg-navy-light rounded-2xl p-6 border border-navy-muted hover:border-primary-gold/50 shadow-xl transition-all duration-300 group flex items-center justify-between">
+                <div class="relative z-10 flex flex-col justify-center h-full">
+                    <p class="text-primary-gold text-sm font-bold uppercase tracking-wider mb-2">Avg. Progress</p>
+                    <div class="flex items-baseline gap-1">
+                        <h3 class="text-6xl font-black stat-value tracking-tight" id="stat-avg">0</h3>
+                        <span class="text-2xl text-gray-500 font-bold">%</span>
+                    </div>
+                    <p class="text-gray-500 text-xs mt-2">Keep moving forward</p>
+                </div>
+
+                <!-- Chart -->
+                <div class="relative w-32 h-32 flex-shrink-0">
+                    <svg class="w-full h-full transform -rotate-90 drop-shadow-[0_0_15px_rgba(245,197,66,0.3)]">
+                        <circle cx="64" cy="64" r="58" stroke="#1A1F3D" stroke-width="12" fill="none"></circle>
+                        <circle id="stat-chart" cx="64" cy="64" r="58" stroke="#F5C542" stroke-width="12" fill="none"
+                            class="transition-all duration-1000 ease-out" stroke-dasharray="364.4"
+                            stroke-dashoffset="364.4" stroke-linecap="round"></circle>
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <i data-lucide="activity" class="w-10 h-10 text-primary-gold"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Completed -->
+            <div
+                class="relative bg-navy-light rounded-2xl p-8 border border-navy-muted hover:border-primary-gold/50 shadow-xl transition-all duration-300 group overflow-hidden">
+                <div
+                    class="absolute right-0 top-0 p-4 opacity-10 transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition-transform duration-700">
+                    <i data-lucide="award" class="w-40 h-40 text-success"></i>
+                </div>
+                <div class="relative z-10 flex flex-col justify-between h-full min-h-[140px]">
+                    <p class="text-success text-sm font-bold uppercase tracking-wider mb-2">Completed</p>
+                    <h3 class="text-6xl font-black stat-value tracking-tight" id="stat-completed">0</h3>
+                    <p class="text-gray-500 text-xs mt-2">Great achievements!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters / Header -->
+        <div class="flex flex-col md:flex-row justify-between items-end mb-8 gap-4 border-b border-navy-muted pb-4">
+            <div>
+                <h2 class="text-3xl font-bold mb-2">My Projects</h2>
+                <p class="text-gray-400">진행 중인 프로젝트를 관리하세요.</p>
+            </div>
+            <div class="flex flex-col md:flex-row gap-4 items-end md:items-center">
+                <!-- Search & Sort -->
+                <div class="flex gap-2">
+                    <div class="relative">
+                        <i data-lucide="search"
+                            class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4"></i>
+                        <input type="text" id="search-input" oninput="handleSearch()" placeholder="프로젝트 검색..."
+                            class="bg-navy-light border border-navy-muted rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:border-primary-gold outline-none w-full md:w-48 placeholder-gray-600 focus:w-64 transition-all duration-300">
+                    </div>
+                    <select id="sort-select" onchange="handleSort()"
+                        class="bg-navy-light border border-navy-muted rounded-lg px-3 py-2 text-sm text-white focus:border-primary-gold outline-none cursor-pointer hover:border-gray-500 transition-colors">
+                        <option value="recent">최신순</option>
+                        <option value="deadline">마감임박</option>
+                        <option value="progress">진행률순</option>
+                    </select>
+                </div>
+                <!-- Filter Btns -->
+                <div class="flex gap-2 bg-navy-light p-1 rounded-lg">
+                    <button onclick="setFilter('all')" id="btn-all"
+                        class="filter-btn px-4 py-2 rounded-md bg-navy-dark text-white text-sm font-medium shadow-sm transition-colors">전체</button>
+                    <button onclick="setFilter('active')" id="btn-active"
+                        class="filter-btn px-4 py-2 rounded-md text-gray-400 hover:text-white hover:bg-navy-muted text-sm transition-colors">진행중</button>
+                    <button onclick="setFilter('completed')" id="btn-completed"
+                        class="filter-btn px-4 py-2 rounded-md text-gray-400 hover:text-white hover:bg-navy-muted text-sm transition-colors">완료</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Section -->
+        <section id="section-active" class="mb-12 animate-fade-in-up">
+            <h3 class="text-xl font-bold text-primary-gold mb-4 flex items-center gap-2">
+                <i data-lucide="flame" class="w-5 h-5"></i> Working On
+            </h3>
+            <div id="grid-active" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Active Cards -->
+            </div>
+        </section>
+
+        <!-- Completed Section -->
+        <section id="section-completed" class="animate-fade-in-up">
+            <h3 class="text-xl font-bold text-gray-400 mb-4 flex items-center gap-2">
+                <i data-lucide="archive" class="w-5 h-5"></i> Completed History
+            </h3>
+            <div id="grid-completed"
+                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 opacity-80">
+                <!-- Completed Cards -->
+            </div>
+        </section>
+
+        <!-- Empty State (Global) -->
+        <div id="empty-state" class="hidden text-center py-20">
+            <div class="inline-block p-6 rounded-full bg-navy-light mb-4">
+                <i data-lucide="folder-plus" class="w-12 h-12 text-gray-500"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-300">프로젝트가 없습니다.</h3>
+            <p class="text-gray-500 mt-2">새로운 목표를 설정하고 기록을 시작해보세요!</p>
+        </div>
+
+    </main>
+
+    <!-- Floating Buttons -->
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+        <!-- Theme Toggle -->
+        <button onclick="toggleTheme()" id="theme-btn"
+            class="p-4 bg-navy-muted border border-navy-muted rounded-full text-primary-gold shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center">
+            <i data-lucide="sun" class="w-6 h-6"></i>
+        </button>
+        <!-- Mute -->
+        <button onclick="toggleSound()" id="mute-btn"
+            class="p-4 bg-navy-muted border border-navy-muted rounded-full text-primary-gold shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center">
+            <i data-lucide="volume-2" class="w-6 h-6"></i>
+        </button>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Footer -->
+    <footer class="bg-navy-dark py-8 text-center text-gray-600 text-sm border-t border-navy-muted">
+        <div class="flex justify-center gap-4 mb-4">
+            <button onclick="exportData()" class="text-xs text-gray-500 hover:text-primary-gold underline">데이터
+                내보내기</button>
+            <button onclick="triggerImport()" class="text-xs text-gray-500 hover:text-primary-gold underline">데이터
+                불러오기</button>
+            <input type="file" id="import-input" accept=".json" class="hidden" onchange="importData(this)">
+        </div>
+        <p>&copy; 2025 PIXEL-LOG PROJECT. All rights reserved.</p>
+    </footer>
+
+    <!-- Modal -->
+    <div id="project-modal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
+        aria-modal="true">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black bg-opacity-70 transition-opacity backdrop-blur-sm" onclick="closeModal()">
+        </div>
+
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            <div
+                class="relative transform overflow-hidden rounded-2xl bg-navy-light text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl border border-navy-muted">
+
+                <!-- Header -->
+                <div class="px-6 py-4 border-b border-navy-muted bg-primary-navy flex justify-between items-center">
+                    <h3 class="text-xl font-semibold text-white" id="modal-title">새 프로젝트 생성</h3>
+                    <input type="hidden" id="editing-id">
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-white transition-colors">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="px-6 py-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                    <form id="project-form" class="space-y-6">
+
+                        <!-- Thumbnail Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">프로젝트 썸네일</label>
+
+                            <!-- Tabs (Simple Toggles) -->
+                            <div class="flex gap-4 mb-3 text-sm border-b border-navy-muted pb-2">
+                                <button type="button" onclick="setThumbTab('gradient')" id="tab-gradient"
+                                    class="text-primary-gold font-bold">Gradient</button>
+                                <button type="button" onclick="setThumbTab('gallery')" id="tab-gallery"
+                                    class="text-gray-400 hover:text-white transition-colors">Gallery</button>
+                                <button type="button" onclick="setThumbTab('custom')" id="tab-custom"
+                                    class="text-gray-400 hover:text-white transition-colors">Upload / URL</button>
+                            </div>
+
+                            <!-- Content: Gradient -->
+                            <div id="thumb-content-gradient" class="thumb-section">
+                                <div class="flex flex-wrap gap-3 items-center">
+                                    <div class="thumbnail-option bg-gradient-to-br from-purple-500 to-indigo-500 selected"
+                                        onclick="selectThumbnail('gradient', 'bg-gradient-to-br from-purple-500 to-indigo-500', this)">
+                                    </div>
+                                    <div class="thumbnail-option bg-gradient-to-br from-pink-500 to-rose-500"
+                                        onclick="selectThumbnail('gradient', 'bg-gradient-to-br from-pink-500 to-rose-500', this)">
+                                    </div>
+                                    <div class="thumbnail-option bg-gradient-to-br from-amber-400 to-orange-500"
+                                        onclick="selectThumbnail('gradient', 'bg-gradient-to-br from-amber-400 to-orange-500', this)">
+                                    </div>
+                                    <div class="thumbnail-option bg-gradient-to-br from-emerald-400 to-cyan-500"
+                                        onclick="selectThumbnail('gradient', 'bg-gradient-to-br from-emerald-400 to-cyan-500', this)">
+                                    </div>
+                                    <div class="thumbnail-option bg-gradient-to-br from-blue-600 to-violet-600"
+                                        onclick="selectThumbnail('gradient', 'bg-gradient-to-br from-blue-600 to-violet-600', this)">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Content: Gallery -->
+                            <div id="thumb-content-gallery" class="thumb-section hidden">
+                                <p class="text-xs text-gray-400 mb-2">Quick Select (Unsplash)</p>
+                                <div class="grid grid-cols-4 gap-2" id="gallery-grid">
+                                    <!-- Injected by JS -->
+                                </div>
+                                <a href="https://unsplash.com" target="_blank"
+                                    class="text-xs text-primary-gold hover:underline mt-2 inline-block flex items-center gap-1">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i> Find more on Unsplash
+                                </a>
+                            </div>
+
+                            <!-- Content: Custom -->
+                            <div id="thumb-content-custom" class="thumb-section hidden space-y-3">
+                                <!-- Upload -->
+                                <div class="relative w-full h-24 border-2 border-dashed border-gray-500 flex flex-col items-center justify-center hover:border-primary-gold group cursor-pointer rounded-lg bg-navy-dark overflow-hidden"
+                                    id="upload-btn">
+                                    <i data-lucide="image-plus"
+                                        class="w-6 h-6 text-gray-500 group-hover:text-primary-gold mb-1"></i>
+                                    <span class="text-xs text-gray-500">Click to Upload Image</span>
+                                    <img id="uploaded-preview"
+                                        class="hidden thumbnail-preview absolute inset-0 object-cover w-full h-full opacity-50">
+                                    <input type="file" accept="image/*"
+                                        class="absolute inset-0 opacity-0 cursor-pointer"
+                                        onchange="handleImageUpload(this)">
+                                </div>
+
+                                <!-- URL Input -->
+                                <div>
+                                    <label class="text-xs text-gray-400 mb-1 block">Or Paste Image URL</label>
+                                    <div class="flex gap-2">
+                                        <input type="url" id="img-url-input" placeholder="https://..."
+                                            class="flex-1 bg-navy-dark border border-navy-muted rounded px-3 py-2 text-xs text-white focus:border-primary-gold outline-none">
+                                        <button type="button" onclick="handleUrlInput()"
+                                            class="bg-navy-muted px-3 py-2 rounded text-xs hover:bg-navy-light text-white">Apply</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <input type="hidden" id="selected-thumb-type" value="gradient">
+                            <input type="hidden" id="selected-thumb-value"
+                                value="bg-gradient-to-br from-purple-500 to-indigo-500">
+                        </div>
+
+                        <!-- Title & Category -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="title" class="block text-sm font-medium text-gray-300 mb-1">프로젝트명 <span
+                                        class="text-primary-gold">*</span></label>
+                                <input type="text" id="title" required
+                                    class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold focus:ring-1 focus:ring-primary-gold transition-colors"
+                                    placeholder="예: 30일 복근 챌린지">
+                            </div>
+                            <div>
+                                <label for="category" class="block text-sm font-medium text-gray-300 mb-1">카테고리</label>
+                                <select id="category"
+                                    class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold focus:ring-1 focus:ring-primary-gold">
+                                    <option value="fitness">운동 💪</option>
+                                    <option value="growth">자기계발 📚</option>
+                                    <option value="work">업무 💼</option>
+                                    <option value="hobby">취미 🎨</option>
+                                    <option value="study">학습 🎓</option>
+                                    <option value="custom">직접지정 ⭐</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Dates -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="startDate" class="block text-sm font-medium text-gray-300 mb-1">시작일</label>
+                                <input type="date" id="startDate" required
+                                    class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold">
+                            </div>
+                            <div>
+                                <label for="endDate" class="block text-sm font-medium text-gray-300 mb-1">종료일</label>
+                                <input type="date" id="endDate" required
+                                    class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold">
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div>
+                            <label for="description" class="block text-sm font-medium text-gray-300 mb-1">설명
+                                (선택)</label>
+                            <textarea id="description" rows="3"
+                                class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold resize-none"
+                                placeholder="어떤 목표를 달성하고 싶으신가요?"></textarea>
+                        </div>
+
+                        <!-- Checklist -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-sm font-medium text-gray-300">체크리스트</label>
+                                <button type="button" onclick="addChecklistItem()"
+                                    class="text-xs text-primary-gold hover:underline flex items-center gap-1">
+                                    <i data-lucide="plus" class="w-3 h-3"></i> 항목 추가
+                                </button>
+                            </div>
+                            <div id="checklist-container" class="space-y-2">
+                                <!-- Dynamic Items -->
+                                <div class="flex gap-2 checklist-row">
+                                    <input type="text"
+                                        class="flex-1 bg-navy-dark border border-navy-muted rounded px-3 py-2 text-sm text-white focus:border-primary-gold outline-none"
+                                        placeholder="할 일 입력" required>
+                                    <button type="button" onclick="removeChecklistItem(this)"
+                                        class="text-gray-500 hover:text-red-400 px-1">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+
+                <!-- Footer -->
+                <div
+                    class="bg-primary-navy px-6 py-4 border-t border-navy-muted flex justify-end gap-3 sm:flex-row-reverse">
+                    <button type="button" onclick="saveProject()"
+                        class="w-full sm:w-auto inline-flex justify-center rounded-lg bg-primary-gold px-6 py-2.5 text-sm font-semibold text-navy-dark shadow-sm hover:bg-gold-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-gold transition-colors">
+                        생성하기
+                    </button>
+                    <button type="button" onclick="closeModal()"
+                        class="mt-3 sm:mt-0 w-full sm:w-auto inline-flex justify-center rounded-lg bg-transparent border border-navy-muted px-6 py-2.5 text-sm font-semibold text-gray-300 shadow-sm hover:bg-navy-muted transition-colors">
+                        취소
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+</body>
+
+</html>
