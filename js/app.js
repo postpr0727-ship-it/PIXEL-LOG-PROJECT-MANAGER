@@ -956,5 +956,144 @@ function triggerImport() {
     document.getElementById('import-input').click();
 }
 
-// Run
-init();
+// --- Firebase Configuration (User Review Required) ---
+const firebaseConfig = {
+    apiKey: "AIzaSyD2Z_C1BQbc5wnMLhX1S6vAVctwLbz5lCE",
+    authDomain: "project-manager-43a31.firebaseapp.com",
+    projectId: "project-manager-43a31",
+    storageBucket: "project-manager-43a31.firebasestorage.app",
+    messagingSenderId: "1060810904284",
+    appId: "1:1060810904284:web:e288cdc31a56cbef321a19"
+};
+
+let db = null;
+let auth = null;
+let currentUser = null;
+
+function initFirebase() {
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
+        console.warn('Firebase config missing or default. Running in Local Storage mode.');
+        return;
+    }
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    auth = firebase.auth();
+
+    auth.onAuthStateChanged(user => {
+        currentUser = user;
+        updateAuthUI(user);
+        init(); // Re-init data based on user login state
+    });
+}
+
+window.handleAuthClick = function () {
+    if (!auth) {
+        showToast('Firebase 설정이 필요합니다.', 'error');
+        return;
+    }
+    if (currentUser) {
+        auth.signOut().then(() => {
+            showToast('로그아웃 되었습니다.', 'success');
+        });
+    } else {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(error => {
+            console.error(error);
+            showToast('로그인에 실패했습니다. (도메인 등록 확인 필요)', 'error');
+        });
+    }
+}
+
+function updateAuthUI(user) {
+    const authBtn = document.getElementById('auth-btn');
+    const userInfo = document.getElementById('user-info');
+    const userPhoto = document.getElementById('user-photo');
+    const userName = document.getElementById('user-name');
+
+    if (!authBtn) return;
+
+    if (user) {
+        authBtn.innerText = '로그아웃';
+        if (userInfo) userInfo.classList.remove('hidden');
+        if (userPhoto) userPhoto.src = user.photoURL;
+        if (userName) userName.innerText = user.displayName;
+    } else {
+        authBtn.innerText = 'Google 로그인';
+        if (userInfo) userInfo.classList.add('hidden');
+    }
+}
+
+function saveToStorage() {
+    if (currentUser && db) {
+        db.collection('users').doc(currentUser.uid).set({
+            projects: projects,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(err => {
+            console.error('Firestore save error:', err);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+        });
+    } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    }
+}
+
+async function loadProjects() {
+    if (currentUser && db) {
+        try {
+            const doc = await db.collection('users').doc(currentUser.uid).get();
+            if (doc.exists) {
+                projects = doc.data().projects || [];
+            } else {
+                projects = [];
+            }
+        } catch (err) {
+            console.error('Firestore load error:', err);
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) projects = JSON.parse(stored);
+        }
+    } else {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            projects = JSON.parse(stored);
+        } else {
+            // Default Dummy Data
+            projects = [{
+                id: 'demo-1',
+                title: '매일 아침 조깅하기',
+                category: 'fitness',
+                description: '건강한 하루를 위한 아침 30분 투자',
+                startDate: '2025-01-01',
+                endDate: '2025-01-31',
+                progress: 50,
+                checklist: [
+                    { text: '1주차 완료', target: 1, current: 1, checked: true, isCounter: false },
+                    { text: '2주차 완료', target: 1, current: 1, checked: true, isCounter: false },
+                    { text: '3주차 완료', target: 1, current: 0, checked: false, isCounter: false },
+                    { text: '4주차 완료', target: 1, current: 0, checked: false, isCounter: false },
+                ],
+                thumbType: 'gradient',
+                thumbValue: 'bg-gradient-to-br from-purple-500 to-indigo-500'
+            }];
+            saveToStorage();
+        }
+    }
+}
+
+async function init() {
+    await loadProjects();
+    renderProjects();
+    renderDashboard();
+    createParticles();
+
+    const today = new Date().toISOString().split('T')[0];
+    const sd = document.getElementById('startDate');
+    if (sd) sd.value = today;
+
+    initTheme();
+}
+
+// Start Firebase & App
+initFirebase();
+if (!firebaseConfig.apiKey) {
+    init(); // Run once if no firebase to avoid waiting for auth state
+}
