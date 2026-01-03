@@ -546,8 +546,16 @@ function selectThumbnail(type, value, element) {
 }
 
 async function uploadImageToStorage(file) {
+    // Check file size (limit to 500KB for base64 fallback to avoid Firestore limit)
+    const MAX_SIZE = 500 * 1024; // 500KB
+
     if (!storage || !currentUser) {
         // Fallback to base64 if not logged in
+        console.log('Using base64 (not logged in)');
+        if (file.size > MAX_SIZE) {
+            showToast('로그인하지 않은 경우 이미지 크기는 500KB 이하여야 합니다.', 'error');
+            throw new Error('File too large for base64 storage');
+        }
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = (e) => resolve(e.target.result);
@@ -571,22 +579,47 @@ async function uploadImageToStorage(file) {
                     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
                     console.log('Upload progress:', progress + '%');
                 },
-                (error) => {
+                async (error) => {
                     console.error('Upload error:', error);
-                    showToast('이미지 업로드 실패', 'error');
-                    reject(error);
+                    // Check if it's a CORS or permission error
+                    if (error.code === 'storage/unauthorized' || error.message?.includes('CORS')) {
+                        console.log('Storage error, falling back to base64');
+                        showToast('Storage 업로드 실패, 로컬 저장으로 전환합니다.', 'error');
+                        // Fallback to base64
+                        if (file.size > MAX_SIZE) {
+                            showToast('이미지 크기가 너무 큽니다 (최대 500KB). Firebase Storage 규칙을 설정하거나 이미지를 압축해주세요.', 'error');
+                            reject(new Error('File too large'));
+                            return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = () => reject(new Error('Failed to read file'));
+                        reader.readAsDataURL(file);
+                    } else {
+                        showToast('이미지 업로드 실패', 'error');
+                        reject(error);
+                    }
                 },
                 async () => {
                     // Upload completed, get download URL
-                    const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-                    resolve(downloadURL);
+                    try {
+                        const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                        resolve(downloadURL);
+                    } catch (error) {
+                        console.error('Failed to get download URL:', error);
+                        reject(error);
+                    }
                 }
             );
         });
     } catch (error) {
         console.error('Storage upload error:', error);
-        showToast('이미지 업로드 중 오류 발생', 'error');
+        showToast('Storage 접근 실패, 로컬 저장으로 전환합니다.', 'error');
         // Fallback to base64
+        if (file.size > MAX_SIZE) {
+            showToast('이미지 크기가 너무 큽니다 (최대 500KB). 이미지를 압축해주세요.', 'error');
+            throw new Error('File too large for base64 storage');
+        }
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = (e) => resolve(e.target.result);
@@ -597,30 +630,58 @@ async function uploadImageToStorage(file) {
 
 window.handleImageUpload = async function (input) {
     const file = input.files[0];
-    if (file) {
-        // Show loading state
-        const uploadBtn = document.getElementById('upload-btn');
-        const preview = document.getElementById('uploaded-preview');
+    if (!file) return;
 
-        if (uploadBtn) {
-            uploadBtn.style.opacity = '0.5';
-            uploadBtn.style.pointerEvents = 'none';
+    // File size limits
+    const MAX_SIZE_STORAGE = 5 * 1024 * 1024; // 5MB for Firebase Storage
+    const MAX_SIZE_BASE64 = 500 * 1024; // 500KB for base64 fallback
+
+    // Check file size before upload
+    const hasStorage = storage && currentUser;
+    const maxSize = hasStorage ? MAX_SIZE_STORAGE : MAX_SIZE_BASE64;
+    const maxSizeText = hasStorage ? '5MB' : '500KB';
+
+    if (file.size > maxSize) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        const maxSizeMB = (maxSize / (1024 * 1024)).toFixed(2);
+
+        if (hasStorage) {
+            showToast(`이미지 용량이 너무 큽니다! (${fileSizeMB}MB)\n최대 ${maxSizeText}까지 업로드 가능합니다.`, 'error');
+        } else {
+            showToast(`로그인하지 않은 경우 이미지 크기는 ${maxSizeText} 이하여야 합니다.\n현재 파일: ${fileSizeMB}MB`, 'error');
         }
 
-        showToast('이미지 업로드 중...', 'success');
+        // Reset file input
+        input.value = '';
+        return;
+    }
 
-        try {
-            const imageUrl = await uploadImageToStorage(file);
-            selectThumbnail('image', imageUrl, uploadBtn);
-            showToast('이미지 업로드 완료!', 'success');
-        } catch (error) {
-            console.error('Upload failed:', error);
+    // Show loading state
+    const uploadBtn = document.getElementById('upload-btn');
+    const preview = document.getElementById('uploaded-preview');
+
+    if (uploadBtn) {
+        uploadBtn.style.opacity = '0.5';
+        uploadBtn.style.pointerEvents = 'none';
+    }
+
+    showToast('이미지 업로드 중...', 'success');
+
+    try {
+        const imageUrl = await uploadImageToStorage(file);
+        selectThumbnail('image', imageUrl, uploadBtn);
+        showToast('이미지 업로드 완료!', 'success');
+    } catch (error) {
+        console.error('Upload failed:', error);
+        if (error.message !== 'File too large') {
             showToast('이미지 업로드 실패', 'error');
-        } finally {
-            if (uploadBtn) {
-                uploadBtn.style.opacity = '1';
-                uploadBtn.style.pointerEvents = 'auto';
-            }
+        }
+        // Reset file input on error
+        input.value = '';
+    } finally {
+        if (uploadBtn) {
+            uploadBtn.style.opacity = '1';
+            uploadBtn.style.pointerEvents = 'auto';
         }
     }
 }
