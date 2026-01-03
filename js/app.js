@@ -551,126 +551,46 @@ function selectThumbnail(type, value, element) {
 }
 
 async function uploadImageToStorage(file) {
-    // Check file size (limit to 500KB for base64 fallback to avoid Firestore limit)
+    // Always use base64 storage (no Firebase Storage)
+    // File size limit: 500KB to avoid Firestore 1MB document limit
     const MAX_SIZE = 500 * 1024; // 500KB
 
-    if (!storage || !currentUser) {
-        // Fallback to base64 if not logged in
-        console.log('Using base64 (not logged in)');
-        if (file.size > MAX_SIZE) {
-            showToast('로그인하지 않은 경우 이미지 크기는 500KB 이하여야 합니다.', 'error');
-            throw new Error('File too large for base64 storage');
-        }
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.readAsDataURL(file);
-        });
+    if (file.size > MAX_SIZE) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        showToast(`이미지 크기가 너무 큽니다!\n현재: ${fileSizeMB}MB / 최대: 500KB\n이미지를 압축해주세요.`, 'error');
+        throw new Error('File too large');
     }
 
-    try {
-        // Create unique filename with timestamp
-        const timestamp = Date.now();
-        const filename = `thumbnails/${currentUser.uid}/${timestamp}_${file.name}`;
-        const storageRef = storage.ref(filename);
-
-        // Show upload progress
-        const uploadTask = storageRef.put(file);
-
-        return new Promise((resolve, reject) => {
-            uploadTask.on('state_changed',
-                (snapshot) => {
-                    // Progress monitoring
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    console.log('Upload progress:', progress + '%');
-                },
-                async (error) => {
-                    console.error('Upload error detected:', error);
-                    console.error('Error code:', error.code);
-                    console.error('Error message:', error.message);
-
-                    // Any upload error should trigger base64 fallback
-                    // Common errors: storage/unauthorized, CORS, network errors
-                    console.log('Storage upload failed, falling back to base64');
-                    showToast('Storage 업로드 실패, 로컬 저장으로 전환합니다.', 'warning');
-
-                    // Fallback to base64
-                    if (file.size > MAX_SIZE) {
-                        showToast('이미지 크기가 너무 큽니다 (최대 500KB).\nFirebase Storage 규칙을 설정하거나 이미지를 압축해주세요.', 'error');
-                        reject(new Error('File too large'));
-                        return;
-                    }
-
-                    try {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            console.log('Successfully converted to base64');
-                            resolve(e.target.result);
-                        };
-                        reader.onerror = () => reject(new Error('Failed to read file'));
-                        reader.readAsDataURL(file);
-                    } catch (readError) {
-                        console.error('Failed to read file:', readError);
-                        reject(readError);
-                    }
-                },
-                async () => {
-                    // Upload completed, get download URL
-                    try {
-                        const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-                        console.log('Storage upload successful:', downloadURL);
-                        resolve(downloadURL);
-                    } catch (error) {
-                        console.error('Failed to get download URL:', error);
-                        reject(error);
-                    }
-                }
-            );
-        });
-    } catch (error) {
-        console.error('Storage upload error:', error);
-        showToast('Storage 접근 실패, 로컬 저장으로 전환합니다.', 'error');
-        // Fallback to base64
-        if (file.size > MAX_SIZE) {
-            showToast('이미지 크기가 너무 큽니다 (최대 500KB). 이미지를 압축해주세요.', 'error');
-            throw new Error('File too large for base64 storage');
-        }
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.readAsDataURL(file);
-        });
-    }
+    // Convert to base64
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            console.log('Image converted to base64 successfully');
+            resolve(e.target.result);
+        };
+        reader.onerror = () => {
+            console.error('Failed to read file');
+            reject(new Error('Failed to read file'));
+        };
+        reader.readAsDataURL(file);
+    });
 }
 
 window.handleImageUpload = async function (input) {
     const file = input.files[0];
     if (!file) return;
 
-    // File size limits
-    const MAX_SIZE_STORAGE = 5 * 1024 * 1024; // 5MB for Firebase Storage
-    const MAX_SIZE_BASE64 = 500 * 1024; // 500KB for base64 fallback
+    // File size limit: 500KB
+    const MAX_SIZE = 500 * 1024;
+    const fileSizeKB = (file.size / 1024).toFixed(0);
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+
+    console.log('File selected:', file.name, 'Size:', fileSizeKB + 'KB');
 
     // Check file size before upload
-    const hasStorage = storage && currentUser;
-    const maxSize = hasStorage ? MAX_SIZE_STORAGE : MAX_SIZE_BASE64;
-    const maxSizeText = hasStorage ? '5MB' : '500KB';
-
-    console.log('File selected:', file.name, 'Size:', (file.size / (1024 * 1024)).toFixed(2) + 'MB');
-    console.log('Has storage:', hasStorage, 'Max size:', maxSizeText);
-
-    if (file.size > maxSize) {
-        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        const maxSizeMB = (maxSize / (1024 * 1024)).toFixed(2);
-
-        console.log('File too large!', fileSizeMB, 'MB >', maxSizeText);
-
-        if (hasStorage) {
-            showToast(`이미지 용량이 너무 큽니다! (${fileSizeMB}MB)\n최대 ${maxSizeText}까지 업로드 가능합니다.`, 'error');
-        } else {
-            showToast(`로그인하지 않은 경우 이미지 크기는 ${maxSizeText} 이하여야 합니다.\n현재 파일: ${fileSizeMB}MB`, 'error');
-        }
-
+    if (file.size > MAX_SIZE) {
+        console.log('File too large!', fileSizeKB, 'KB > 500KB');
+        showToast(`이미지 용량이 너무 큽니다!\n현재: ${fileSizeMB}MB / 최대: 500KB\n이미지를 압축해주세요.`, 'error');
         // Reset file input
         input.value = '';
         return;
@@ -678,7 +598,6 @@ window.handleImageUpload = async function (input) {
 
     // Show loading state
     const uploadBtn = document.getElementById('upload-btn');
-    const preview = document.getElementById('uploaded-preview');
 
     if (uploadBtn) {
         uploadBtn.style.opacity = '0.5';
