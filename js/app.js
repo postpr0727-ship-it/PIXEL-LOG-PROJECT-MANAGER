@@ -393,18 +393,22 @@ function openModal(editingId = null) {
             p.checklist.forEach(item => addChecklistItem(item.text, item.target, item.isCounter));
 
             if (p.thumbType) {
-                selectThumbnail(p.thumbType, p.thumbValue, document.getElementById('upload-btn'));
+                // selectThumbnail already handles preview update if type is 'image'
+                selectThumbnail(p.thumbType, p.thumbValue, null);
                 if (p.thumbType === 'image') {
                     setThumbTab('custom');
-                    const preview = document.getElementById('uploaded-preview');
-                    preview.src = p.thumbValue;
-                    preview.classList.remove('hidden');
                 } else {
                     setThumbTab('gradient');
                 }
             }
             return;
         }
+    }
+    // Reset thumbnail preview for new projects
+    const preview = document.getElementById('uploaded-preview');
+    if (preview) {
+        preview.src = '';
+        preview.classList.add('hidden');
     }
     addChecklistItem();
 }
@@ -441,8 +445,40 @@ function renderGallery() {
 function selectThumbnail(type, value, element) {
     document.getElementById('selected-thumb-type').value = type;
     document.getElementById('selected-thumb-value').value = value;
+
+    // UI Update
     document.querySelectorAll('.thumbnail-option, #gallery-grid > div').forEach(opt => opt.classList.remove('selected', 'border-primary-gold'));
-    if (element) element.classList.add(element.classList.contains('thumbnail-option') ? 'selected' : 'border-primary-gold');
+    if (element) {
+        element.classList.add(element.classList.contains('thumbnail-option') ? 'selected' : 'border-primary-gold');
+    }
+
+    // Special handling for Custom Tab preview
+    if (type === 'image') {
+        const preview = document.getElementById('uploaded-preview');
+        if (preview && preview.src !== value) {
+            preview.src = value;
+            preview.classList.remove('hidden');
+        }
+    }
+}
+
+window.handleImageUpload = function (input) {
+    const file = input.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const val = e.target.result;
+            selectThumbnail('image', val, document.getElementById('upload-btn'));
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+window.handleUrlInput = function () {
+    const url = document.getElementById('img-url-input').value;
+    if (url) {
+        selectThumbnail('image', url, null);
+    }
 }
 
 function closeModal() { modal.classList.add('hidden'); }
