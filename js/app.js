@@ -306,7 +306,7 @@ function createCardElement(project, isCompleted) {
     div.innerHTML = `
         <div class="h-40 w-full relative flex flex-col justify-end overflow-hidden">
             ${project.thumbType === 'image'
-            ? `<img src="${project.thumbValue}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">`
+            ? `<img src="${project.thumbValue}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" style="object-position: center ${project.thumbPosition || 50}%">`
             : `<div class="absolute inset-0 ${project.thumbValue} transition-transform duration-700 group-hover:scale-110"></div>`
         }
             <div class="absolute inset-0 bg-gradient-to-t from-navy-light via-transparent to-transparent opacity-90"></div>
@@ -372,6 +372,51 @@ function calculateProgress(checklist) {
 }
 
 // --- Modal Actions ---
+let isDraggingThumb = false;
+let startY = 0;
+let currentPos = 50;
+
+function initThumbnailDragger() {
+    const preview = document.getElementById('uploaded-preview');
+    const dragHint = document.getElementById('drag-hint');
+    if (!preview) return;
+
+    const startDrag = (e) => {
+        if (!preview.classList.contains('hidden')) {
+            isDraggingThumb = true;
+            startY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            const style = window.getComputedStyle(preview);
+            const pos = style.objectPosition.split(' ')[1];
+            currentPos = parseFloat(pos) || 50;
+            preview.classList.add('dragging');
+            if (dragHint) dragHint.classList.add('hidden');
+        }
+    };
+
+    const onDrag = (e) => {
+        if (!isDraggingThumb) return;
+        const y = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        const delta = (y - startY) * 0.2; // Sensitivity
+        currentPos = Math.max(0, Math.min(100, currentPos - delta));
+        startY = y;
+
+        preview.style.objectPosition = `center ${currentPos}%`;
+        document.getElementById('selected-thumb-pos').value = currentPos;
+    };
+
+    const stopDrag = () => {
+        isDraggingThumb = false;
+        preview.classList.remove('dragging');
+    };
+
+    preview.addEventListener('mousedown', startDrag);
+    preview.addEventListener('touchstart', startDrag);
+    window.addEventListener('mousemove', onDrag);
+    window.addEventListener('touchmove', onDrag);
+    window.addEventListener('mouseup', stopDrag);
+    window.addEventListener('touchend', stopDrag);
+}
+
 function openModal(editingId = null) {
     modal.classList.remove('hidden');
     form.reset();
@@ -393,10 +438,16 @@ function openModal(editingId = null) {
             p.checklist.forEach(item => addChecklistItem(item.text, item.target, item.isCounter));
 
             if (p.thumbType) {
-                // selectThumbnail already handles preview update if type is 'image'
+                const pos = p.thumbPosition !== undefined ? p.thumbPosition : 50;
+                document.getElementById('selected-thumb-pos').value = pos;
                 selectThumbnail(p.thumbType, p.thumbValue, null);
+
                 if (p.thumbType === 'image') {
                     setThumbTab('custom');
+                    const preview = document.getElementById('uploaded-preview');
+                    if (preview) {
+                        preview.style.objectPosition = `center ${pos}%`;
+                    }
                 } else {
                     setThumbTab('gradient');
                 }
@@ -409,7 +460,12 @@ function openModal(editingId = null) {
     if (preview) {
         preview.src = '';
         preview.classList.add('hidden');
+        preview.style.objectPosition = 'center 50%';
+        document.getElementById('selected-thumb-pos').value = 50;
     }
+    const dragHint = document.getElementById('drag-hint');
+    if (dragHint) dragHint.classList.add('hidden');
+
     addChecklistItem();
 }
 
@@ -455,10 +511,15 @@ function selectThumbnail(type, value, element) {
     // Special handling for Custom Tab preview
     if (type === 'image') {
         const preview = document.getElementById('uploaded-preview');
+        const dragHint = document.getElementById('drag-hint');
         if (preview && preview.src !== value) {
             preview.src = value;
             preview.classList.remove('hidden');
+            if (dragHint) dragHint.classList.remove('hidden');
         }
+    } else {
+        const dragHint = document.getElementById('drag-hint');
+        if (dragHint) dragHint.classList.add('hidden');
     }
 }
 
@@ -522,14 +583,17 @@ function saveProject() {
     });
     if (checklist.length === 0) { showToast('항목을 입력하세요.', 'error'); return; }
 
-    const thumbType = document.getElementById('selected-thumb-type').value, thumbValue = document.getElementById('selected-thumb-value').value, id = document.getElementById('editing-id').value;
+    const thumbType = document.getElementById('selected-thumb-type').value,
+        thumbValue = document.getElementById('selected-thumb-value').value,
+        thumbPosition = document.getElementById('selected-thumb-pos').value,
+        id = document.getElementById('editing-id').value;
     if (id) {
         const idx = projects.findIndex(p => p.id === id);
         if (idx !== -1) {
-            projects[idx] = { ...projects[idx], title, category: document.getElementById('category').value, startDate: document.getElementById('startDate').value, endDate: document.getElementById('endDate').value, description: document.getElementById('description').value, checklist, thumbType, thumbValue, progress: calculateProgress(checklist) };
+            projects[idx] = { ...projects[idx], title, category: document.getElementById('category').value, startDate: document.getElementById('startDate').value, endDate: document.getElementById('endDate').value, description: document.getElementById('description').value, checklist, thumbType, thumbValue, thumbPosition: parseFloat(thumbPosition), progress: calculateProgress(checklist) };
         }
     } else {
-        projects.unshift({ id: Date.now().toString(), title, category: document.getElementById('category').value, description: document.getElementById('description').value, startDate: document.getElementById('startDate').value, endDate: document.getElementById('endDate').value, checklist, progress: 0, thumbType, thumbValue });
+        projects.unshift({ id: Date.now().toString(), title, category: document.getElementById('category').value, description: document.getElementById('description').value, startDate: document.getElementById('startDate').value, endDate: document.getElementById('endDate').value, checklist, progress: 0, thumbType, thumbValue, thumbPosition: parseFloat(thumbPosition) });
         showToast('생성되었습니다!', 'success');
     }
     saveToStorage(); renderProjects(); closeModal();
@@ -704,5 +768,6 @@ async function loadProjects() {
 }
 
 // Start App
+initThumbnailDragger();
 initFirebase();
 if (!firebaseConfig.apiKey) init();

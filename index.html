@@ -356,15 +356,22 @@
                             <!-- Content: Custom -->
                             <div id="thumb-content-custom" class="thumb-section hidden space-y-3">
                                 <!-- Upload -->
-                                <div class="relative w-full h-24 border-2 border-dashed border-gray-500 flex flex-col items-center justify-center hover:border-primary-gold group cursor-pointer rounded-lg bg-navy-dark overflow-hidden"
+                                <div class="relative w-full h-40 border-2 border-dashed border-gray-500 flex flex-col items-center justify-center hover:border-primary-gold group cursor-pointer rounded-lg bg-navy-dark overflow-hidden"
                                     id="upload-btn">
+                                    <div id="drag-hint"
+                                        class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none hidden">
+                                        <span
+                                            class="text-[10px] text-white font-bold bg-navy-dark/80 px-2 py-1 rounded-full border border-white/20">↔
+                                            위아래로 드래그하여 위치 조절</span>
+                                    </div>
                                     <i data-lucide="image-plus"
                                         class="w-6 h-6 text-gray-500 group-hover:text-primary-gold mb-1"></i>
                                     <span class="text-xs text-gray-500">Click to Upload Image</span>
                                     <img id="uploaded-preview"
-                                        class="hidden thumbnail-preview absolute inset-0 object-cover w-full h-full opacity-50">
-                                    <input type="file" accept="image/*"
-                                        class="absolute inset-0 opacity-0 cursor-pointer"
+                                        class="hidden thumbnail-preview absolute inset-0 object-cover w-full h-full opacity-60 select-none pointer-events-auto cursor-ns-resize"
+                                        style="object-position: center 50%;">
+                                    <input type="file" id="thumb-file-input" accept="image/*"
+                                        class="absolute inset-0 opacity-0 cursor-pointer z-20"
                                         onchange="handleImageUpload(this)">
                                 </div>
 
@@ -383,6 +390,7 @@
                             <input type="hidden" id="selected-thumb-type" value="gradient">
                             <input type="hidden" id="selected-thumb-value"
                                 value="bg-gradient-to-br from-purple-500 to-indigo-500">
+                            <input type="hidden" id="selected-thumb-pos" value="50">
                         </div>
 
                         <!-- Title & Category -->
