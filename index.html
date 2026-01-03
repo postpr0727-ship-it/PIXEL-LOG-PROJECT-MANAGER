@@ -93,10 +93,8 @@
 
         <!-- Auth Actions (Top Right) -->
         <div class="absolute top-8 right-8 z-30 flex items-center gap-4">
-            <div id="user-info"
-                class="hidden flex items-center gap-2 bg-navy-muted/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-navy-muted">
-                <img id="user-photo" src="" class="w-6 h-6 rounded-full border border-primary-gold">
-                <span id="user-name" class="text-xs text-white font-pj font-medium"></span>
+            <div id="user-info" class="hidden">
+                <img id="user-photo" src="" class="w-8 h-8 rounded-full border-2 border-primary-gold shadow-lg cursor-pointer hover:scale-110 transition-transform" title="">
             </div>
             <button id="auth-btn" onclick="handleAuthClick()"
                 class="px-5 py-2 rounded-full border border-primary-gold/50 text-primary-gold text-sm font-bold font-pj hover:bg-primary-gold hover:text-navy-dark transition-all duration-300">

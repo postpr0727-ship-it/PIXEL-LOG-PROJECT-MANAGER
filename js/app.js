@@ -1504,15 +1504,16 @@ function updateAuthUI(user) {
     const authBtn = document.getElementById('auth-btn');
     const userInfo = document.getElementById('user-info');
     const userPhoto = document.getElementById('user-photo');
-    const userName = document.getElementById('user-name');
 
     if (!authBtn) return;
 
     if (user) {
         authBtn.innerText = '로그아웃';
         if (userInfo) userInfo.classList.remove('hidden');
-        if (userPhoto) userPhoto.src = user.photoURL;
-        if (userName) userName.innerText = user.displayName;
+        if (userPhoto) {
+            userPhoto.src = user.photoURL;
+            userPhoto.title = user.displayName; // 마우스 오버 시 이름 표시
+        }
     } else {
         authBtn.innerText = 'Google 로그인';
         if (userInfo) userInfo.classList.add('hidden');
