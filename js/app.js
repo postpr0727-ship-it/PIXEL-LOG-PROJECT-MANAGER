@@ -382,46 +382,57 @@ let startY = 0;
 let currentPos = 50;
 
 function initThumbnailDragger() {
-    const preview = document.getElementById('uploaded-preview');
+    const preview = document.getElementById('url-preview-img');
     const dragHint = document.getElementById('drag-hint');
     if (!preview) return;
+    
+    // Remove existing listeners to prevent duplicates
+    const newPreview = preview.cloneNode(true);
+    preview.parentNode.replaceChild(newPreview, preview);
 
     const startDrag = (e) => {
-        if (!preview.classList.contains('hidden')) {
+        const currentPreview = document.getElementById('url-preview-img');
+        const container = document.getElementById('url-preview-container');
+        if (container && !container.classList.contains('hidden')) {
             isDraggingThumb = true;
             startY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
 
             // Prevent default browser dragging behavior
             if (e.cancelable) e.preventDefault();
 
-            const style = window.getComputedStyle(preview);
+            const style = window.getComputedStyle(currentPreview);
             const pos = style.objectPosition.split(' ')[1];
             currentPos = parseFloat(pos) || 50;
-            preview.classList.add('dragging');
-            if (dragHint) dragHint.classList.add('hidden');
+            currentPreview.classList.add('dragging');
+            const hint = document.getElementById('drag-hint');
+            if (hint) hint.classList.add('hidden');
         }
     };
 
     const onDrag = (e) => {
         if (!isDraggingThumb) return;
+        const currentPreview = document.getElementById('url-preview-img');
         const y = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-        const delta = (y - startY) * 0.2; // Sensitivity
+        const delta = (y - startY) * 0.3; // Sensitivity
         currentPos = Math.max(0, Math.min(100, currentPos - delta));
         startY = y;
 
-        preview.style.objectPosition = `center ${currentPos}%`;
+        if (currentPreview) {
+            currentPreview.style.objectPosition = `center ${currentPos}%`;
+        }
         document.getElementById('selected-thumb-pos').value = currentPos;
     };
 
     const stopDrag = () => {
         isDraggingThumb = false;
-        preview.classList.remove('dragging');
+        const currentPreview = document.getElementById('url-preview-img');
+        if (currentPreview) currentPreview.classList.remove('dragging');
     };
 
-    preview.addEventListener('mousedown', startDrag);
-    preview.addEventListener('touchstart', startDrag);
+    newPreview.addEventListener('mousedown', startDrag);
+    newPreview.addEventListener('touchstart', startDrag, { passive: false });
     window.addEventListener('mousemove', onDrag);
-    window.addEventListener('touchmove', onDrag);
+    window.addEventListener('touchmove', onDrag, { passive: false });
     window.addEventListener('mouseup', stopDrag);
     window.addEventListener('touchend', stopDrag);
 }
@@ -435,6 +446,12 @@ function openModal(editingId = null) {
     const submitBtn = document.getElementById('submit-btn');
     if (submitBtn) submitBtn.innerText = '생성하기';
     setThumbTab('gradient');
+    
+    // Initialize drag & drop after modal opens
+    setTimeout(() => {
+        initDragDrop();
+        lucide.createIcons();
+    }, 100);
 
     if (editingId) {
         const p = projects.find(pro => pro.id === editingId);
@@ -490,9 +507,16 @@ function setThumbTab(tab) {
     });
     document.getElementById(`thumb-content-${tab}`).classList.remove('hidden');
     document.getElementById(`tab-${tab}`).classList.add('text-primary-gold', 'font-bold');
-    // Gallery tab now shows free image site links (no rendering needed)
+    
+    // Initialize features based on tab
     if (tab === 'gallery') {
-        lucide.createIcons(); // Refresh icons for the gallery cards
+        lucide.createIcons();
+    } else if (tab === 'custom') {
+        setUploadMethod('file'); // Default to file upload
+        setTimeout(() => {
+            initDragDrop();
+            lucide.createIcons();
+        }, 50);
     }
 }
 
@@ -579,18 +603,25 @@ window.handleUrlInput = function () {
     // Show preview
     const previewContainer = document.getElementById('url-preview-container');
     const previewImg = document.getElementById('url-preview-img');
+    const dragHint = document.getElementById('drag-hint');
 
     if (previewImg && previewContainer) {
         previewImg.src = url;
+        previewImg.style.objectPosition = 'center 50%';
+        document.getElementById('selected-thumb-pos').value = 50;
+        
         previewImg.onerror = () => {
             showToast('이미지를 불러올 수 없습니다.\n\nGoogle Drive 이미지인 경우:\n공유 설정을 "링크가 있는 모든 사용자"로 변경해주세요.', 'error');
             previewContainer.classList.add('hidden');
         };
         previewImg.onload = () => {
             previewContainer.classList.remove('hidden');
+            if (dragHint) dragHint.classList.remove('hidden');
             selectThumbnail('image', url, null);
             showToast('이미지 URL이 적용되었습니다!', 'success');
             lucide.createIcons();
+            // Initialize thumbnail dragger for position adjustment
+            setTimeout(() => initThumbnailDragger(), 100);
         };
     } else {
         // Fallback if preview elements don't exist
@@ -604,12 +635,20 @@ window.clearUrlPreview = function () {
     const input = document.getElementById('img-url-input');
     const previewContainer = document.getElementById('url-preview-container');
     const previewImg = document.getElementById('url-preview-img');
+    const uploadPrompt = document.getElementById('upload-prompt');
+    const dragHint = document.getElementById('drag-hint');
 
     if (input) input.value = '';
     if (previewImg) previewImg.src = '';
     if (previewContainer) previewContainer.classList.add('hidden');
+    if (uploadPrompt) uploadPrompt.classList.remove('hidden');
+    if (dragHint) dragHint.classList.add('hidden');
+    
+    // Reset thumbnail selection to default gradient
+    selectThumbnail('gradient', 'bg-gradient-to-br from-purple-500 to-indigo-500', null);
+    document.getElementById('selected-thumb-pos').value = 50;
 
-    showToast('미리보기가 초기화되었습니다.', 'success');
+    showToast('이미지가 제거되었습니다.', 'success');
 }
 
 function closeModal() { modal.classList.add('hidden'); }
@@ -817,6 +856,163 @@ function importData(input) {
 
 const firebaseConfig = { apiKey: "AIzaSyD2Z_C1BQbc5wnMLhX1S6vAVctwLbz5lCE", authDomain: "project-manager-43a31.firebaseapp.com", projectId: "project-manager-43a31", storageBucket: "project-manager-43a31.firebasestorage.app", messagingSenderId: "1060810904284", appId: "1:1060810904284:web:e288cdc31a56cbef321a19" };
 let db = null, auth = null, currentUser = null, storage = null;
+
+// Supabase Configuration
+const supabaseUrl = 'https://bcrbxmzddugewnmledbl.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjcmJ4bXpkZHVnZXdubWxlZGJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0MTg3NjEsImV4cCI6MjA4Mjk5NDc2MX0.Vrkb1bXeidPZUNLPSiRyap2XUNkAwoiACqUHLvOAxiA';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+const SUPABASE_BUCKET = 'project-thumbnails';
+
+// Upload Method Toggle
+window.setUploadMethod = function(method) {
+    const fileTab = document.getElementById('upload-tab-file');
+    const urlTab = document.getElementById('upload-tab-url');
+    const fileSection = document.getElementById('upload-method-file');
+    const urlSection = document.getElementById('upload-method-url');
+    
+    if (method === 'file') {
+        fileTab.className = 'flex-1 py-2 px-3 rounded-md text-sm font-bold bg-primary-gold text-navy-dark transition-all';
+        urlTab.className = 'flex-1 py-2 px-3 rounded-md text-sm font-medium text-gray-400 hover:text-white transition-all';
+        fileSection.classList.remove('hidden');
+        urlSection.classList.add('hidden');
+    } else {
+        urlTab.className = 'flex-1 py-2 px-3 rounded-md text-sm font-bold bg-primary-gold text-navy-dark transition-all';
+        fileTab.className = 'flex-1 py-2 px-3 rounded-md text-sm font-medium text-gray-400 hover:text-white transition-all';
+        urlSection.classList.remove('hidden');
+        fileSection.classList.add('hidden');
+    }
+    lucide.createIcons();
+}
+
+// Supabase Storage Upload
+async function uploadToSupabase(file) {
+    if (!file) return null;
+    
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+        showToast('파일 크기는 5MB 이하여야 합니다.', 'error');
+        return null;
+    }
+    
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+        showToast('JPG, PNG, GIF, WebP 파일만 업로드 가능합니다.', 'error');
+        return null;
+    }
+    
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const ext = file.name.split('.').pop();
+    const fileName = `thumb_${timestamp}_${randomStr}.${ext}`;
+    
+    try {
+        const { data, error } = await supabaseClient.storage
+            .from(SUPABASE_BUCKET)
+            .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
+        
+        if (error) {
+            console.error('Supabase upload error:', error);
+            showToast('업로드 실패: ' + error.message, 'error');
+            return null;
+        }
+        
+        // Get public URL
+        const { data: urlData } = supabaseClient.storage
+            .from(SUPABASE_BUCKET)
+            .getPublicUrl(fileName);
+        
+        return urlData.publicUrl;
+    } catch (err) {
+        console.error('Upload exception:', err);
+        showToast('업로드 중 오류가 발생했습니다.', 'error');
+        return null;
+    }
+}
+
+// File Upload Handler
+window.handleFileUpload = async function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const uploadPrompt = document.getElementById('upload-prompt');
+    const uploadLoading = document.getElementById('upload-loading');
+    const previewContainer = document.getElementById('url-preview-container');
+    const previewImg = document.getElementById('url-preview-img');
+    const dragHint = document.getElementById('drag-hint');
+    
+    // Show loading state
+    if (uploadPrompt) uploadPrompt.classList.add('hidden');
+    if (uploadLoading) uploadLoading.classList.remove('hidden');
+    
+    try {
+        const imageUrl = await uploadToSupabase(file);
+        
+        if (imageUrl) {
+            // Show preview
+            if (previewImg) {
+                previewImg.src = imageUrl;
+                previewImg.style.objectPosition = 'center 50%';
+                document.getElementById('selected-thumb-pos').value = 50;
+                
+                previewImg.onload = () => {
+                    if (previewContainer) previewContainer.classList.remove('hidden');
+                    if (dragHint) dragHint.classList.remove('hidden');
+                    selectThumbnail('image', imageUrl, null);
+                    showToast('이미지가 업로드되었습니다!', 'success');
+                    lucide.createIcons();
+                    // Initialize thumbnail dragger for position adjustment
+                    setTimeout(() => initThumbnailDragger(), 100);
+                };
+            }
+        }
+    } finally {
+        // Reset loading state
+        if (uploadLoading) uploadLoading.classList.add('hidden');
+        if (uploadPrompt) uploadPrompt.classList.remove('hidden');
+        // Reset file input
+        input.value = '';
+    }
+}
+
+// Drag & Drop Support
+function initDragDrop() {
+    const dropZone = document.getElementById('file-drop-zone');
+    if (!dropZone) return;
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.add('border-primary-gold', 'bg-primary-gold/10');
+        });
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.remove('border-primary-gold', 'bg-primary-gold/10');
+        });
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const fileInput = document.getElementById('thumb-file-input');
+            fileInput.files = files;
+            handleFileUpload(fileInput);
+        }
+    });
+}
 
 function initFirebase() {
     if (!firebaseConfig.apiKey) return;

@@ -15,6 +15,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -400,22 +402,46 @@
                                 </div>
                             </div>
 
-                            <!-- Content: Custom (URL Only) -->
+                            <!-- Content: Custom (File Upload + URL) -->
                             <div id="thumb-content-custom" class="thumb-section hidden">
-                                <!-- Image URL Input -->
                                 <div class="space-y-4">
-                                    <div class="text-center py-3">
-                                        <i data-lucide="link" class="w-8 h-8 text-primary-gold mx-auto mb-2"></i>
-                                        <h3 class="text-sm font-bold text-white mb-1">이미지 URL 입력</h3>
-                                        <p class="text-xs text-gray-400">외부 이미지 링크를 붙여넣으세요</p>
+                                    <!-- Upload Method Tabs -->
+                                    <div class="flex rounded-lg bg-navy-dark p-1 gap-1">
+                                        <button type="button" onclick="setUploadMethod('file')" id="upload-tab-file"
+                                            class="flex-1 py-2 px-3 rounded-md text-sm font-bold bg-primary-gold text-navy-dark transition-all">
+                                            <i data-lucide="upload" class="w-4 h-4 inline mr-1"></i>
+                                            파일 업로드
+                                        </button>
+                                        <button type="button" onclick="setUploadMethod('url')" id="upload-tab-url"
+                                            class="flex-1 py-2 px-3 rounded-md text-sm font-medium text-gray-400 hover:text-white transition-all">
+                                            <i data-lucide="link" class="w-4 h-4 inline mr-1"></i>
+                                            URL 입력
+                                        </button>
                                     </div>
 
-                                    <!-- URL Input -->
-                                    <div class="space-y-3">
+                                    <!-- File Upload Section -->
+                                    <div id="upload-method-file" class="space-y-3">
+                                        <div id="file-drop-zone" 
+                                            class="relative border-2 border-dashed border-navy-muted rounded-lg p-6 text-center hover:border-primary-gold transition-colors cursor-pointer"
+                                            onclick="document.getElementById('thumb-file-input').click()">
+                                            <input type="file" id="thumb-file-input" accept="image/*" class="hidden" onchange="handleFileUpload(this)">
+                                            <div id="upload-prompt">
+                                                <i data-lucide="cloud-upload" class="w-12 h-12 text-gray-500 mx-auto mb-3"></i>
+                                                <p class="text-sm text-gray-300 font-medium mb-1">클릭하거나 이미지를 드래그하세요</p>
+                                                <p class="text-xs text-gray-500">PNG, JPG, GIF, WebP (최대 5MB)</p>
+                                            </div>
+                                            <div id="upload-loading" class="hidden">
+                                                <div class="w-12 h-12 border-4 border-primary-gold border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                                                <p class="text-sm text-primary-gold font-medium">업로드 중...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- URL Input Section -->
+                                    <div id="upload-method-url" class="hidden space-y-3">
                                         <input type="url" id="img-url-input"
                                             placeholder="https://images.unsplash.com/photo-..."
                                             class="w-full bg-navy-dark border-2 border-navy-muted rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-primary-gold outline-none transition-colors">
-
                                         <button type="button" onclick="handleUrlInput()"
                                             class="w-full bg-primary-gold hover:bg-yellow-500 text-navy-dark font-bold py-3 rounded-lg text-sm transition-all transform hover:scale-[1.02] active:scale-[0.98]">
                                             <i data-lucide="check" class="w-4 h-4 inline mr-1"></i>
@@ -423,16 +449,25 @@
                                         </button>
                                     </div>
 
-                                    <!-- Preview Area -->
+                                    <!-- Preview Area (Shared) -->
                                     <div id="url-preview-container" class="hidden">
-                                        <div class="relative w-full h-32 rounded-lg overflow-hidden border-2 border-primary-gold">
-                                            <img id="url-preview-img" class="w-full h-full object-cover">
-                                            <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                                        <div class="relative w-full h-40 rounded-lg overflow-hidden border-2 border-primary-gold">
+                                            <img id="url-preview-img" class="w-full h-full object-cover" draggable="false">
+                                            <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
+                                            <div id="drag-hint" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                <div class="bg-black/60 backdrop-blur-sm px-4 py-2 rounded-full">
+                                                    <p class="text-xs text-white font-medium flex items-center gap-2">
+                                                        <i data-lucide="move" class="w-4 h-4"></i>
+                                                        드래그로 위치 조정
+                                                    </p>
+                                                </div>
+                                            </div>
                                             <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between">
-                                                <span class="text-xs text-white font-bold">미리보기</span>
+                                                <span class="text-xs text-white font-bold bg-black/40 px-2 py-1 rounded">미리보기</span>
                                                 <button type="button" onclick="clearUrlPreview()"
-                                                    class="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded">
-                                                    <i data-lucide="x" class="w-3 h-3"></i>
+                                                    class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1 rounded flex items-center gap-1">
+                                                    <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                                    삭제
                                                 </button>
                                             </div>
                                         </div>
