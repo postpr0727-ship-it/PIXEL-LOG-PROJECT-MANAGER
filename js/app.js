@@ -474,10 +474,25 @@ function openModal(editingId = null) {
 
                 if (p.thumbType === 'image') {
                     setThumbTab('custom');
-                    const preview = document.getElementById('uploaded-preview');
-                    if (preview) {
-                        preview.style.objectPosition = `center ${pos}%`;
-                    }
+                    // Show preview with existing image
+                    setTimeout(() => {
+                        const previewImg = document.getElementById('url-preview-img');
+                        const previewContainer = document.getElementById('url-preview-container');
+                        const dragHint = document.getElementById('drag-hint');
+                        const uploadPrompt = document.getElementById('upload-prompt');
+                        
+                        if (previewImg) {
+                            previewImg.src = p.thumbValue;
+                            previewImg.style.objectPosition = `center ${pos}%`;
+                        }
+                        if (previewContainer) previewContainer.classList.remove('hidden');
+                        if (dragHint) dragHint.classList.remove('hidden');
+                        if (uploadPrompt) uploadPrompt.classList.add('hidden');
+                        
+                        // Initialize dragger for position adjustment
+                        initThumbnailDragger();
+                        lucide.createIcons();
+                    }, 150);
                 } else {
                     setThumbTab('gradient');
                 }
@@ -486,13 +501,18 @@ function openModal(editingId = null) {
         }
     }
     // Reset thumbnail preview for new projects
-    const preview = document.getElementById('uploaded-preview');
+    const preview = document.getElementById('url-preview-img');
+    const previewContainer = document.getElementById('url-preview-container');
+    const uploadPrompt = document.getElementById('upload-prompt');
+    
     if (preview) {
         preview.src = '';
-        preview.classList.add('hidden');
         preview.style.objectPosition = 'center 50%';
-        document.getElementById('selected-thumb-pos').value = 50;
     }
+    if (previewContainer) previewContainer.classList.add('hidden');
+    if (uploadPrompt) uploadPrompt.classList.remove('hidden');
+    document.getElementById('selected-thumb-pos').value = 50;
+    
     const dragHint = document.getElementById('drag-hint');
     if (dragHint) dragHint.classList.add('hidden');
 
