@@ -181,9 +181,11 @@ function showToast(msg, type = 'info') {
     }
 
     toast.className = `flex items-center gap-3 px-6 py-4 rounded-lg shadow-2xl border ${bgClass} toast-enter text-sm font-bold min-w-[300px]`;
+    // Convert \n to <br> for line breaks
+    const formattedMsg = msg.replace(/\n/g, '<br>');
     toast.innerHTML = `
-        <i data-lucide="${icon}" class="w-5 h-5"></i>
-        <span>${msg}</span>
+        <i data-lucide="${icon}" class="w-5 h-5 flex-shrink-0"></i>
+        <span>${formattedMsg}</span>
     `;
 
     container.appendChild(toast);
@@ -641,9 +643,14 @@ window.handleImageUpload = async function (input) {
     const maxSize = hasStorage ? MAX_SIZE_STORAGE : MAX_SIZE_BASE64;
     const maxSizeText = hasStorage ? '5MB' : '500KB';
 
+    console.log('File selected:', file.name, 'Size:', (file.size / (1024 * 1024)).toFixed(2) + 'MB');
+    console.log('Has storage:', hasStorage, 'Max size:', maxSizeText);
+
     if (file.size > maxSize) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
         const maxSizeMB = (maxSize / (1024 * 1024)).toFixed(2);
+
+        console.log('File too large!', fileSizeMB, 'MB >', maxSizeText);
 
         if (hasStorage) {
             showToast(`이미지 용량이 너무 큽니다! (${fileSizeMB}MB)\n최대 ${maxSizeText}까지 업로드 가능합니다.`, 'error');
