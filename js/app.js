@@ -341,10 +341,13 @@ function createCardElement(project, isCompleted) {
             <!-- Gradient Overlay -->
             <div class="absolute inset-0 bg-gradient-to-t from-navy-light via-transparent to-transparent opacity-90"></div>
             
-            <!-- Actions (Edit & Delete) -->
+            <!-- Actions (Edit, Copy & Delete) -->
             <div class="absolute top-3 right-3 flex gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onclick="event.stopPropagation(); openModal('${project.id}')" class="p-2 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-white hover:text-navy-dark transition-colors" title="수정">
                     <i data-lucide="pencil" class="w-4 h-4"></i>
+                </button>
+                <button onclick="event.stopPropagation(); copyProject('${project.id}')" class="p-2 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-white hover:text-navy-dark transition-colors" title="복사">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
                 </button>
                 <button onclick="event.stopPropagation(); deleteProject('${project.id}')" class="p-2 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-red-500 hover:text-white transition-colors" title="삭제">
                     <i data-lucide="trash-2" class="w-4 h-4"></i>
@@ -389,6 +392,29 @@ function deleteProject(id) {
         saveToStorage();
         renderProjects();
     }
+}
+
+function copyProject(id) {
+    const original = projects.find(p => p.id === id);
+    if (!original) return;
+
+    // Deep clone original project
+    const copy = JSON.parse(JSON.stringify(original));
+
+    // Modify copy
+    copy.id = Date.now().toString(); // New unique ID
+    copy.title = `[복사] ${original.title}`;
+    copy.createdAt = new Date().toISOString();
+    copy.updatedAt = new Date().toISOString();
+
+    // Add to projects (unshift to show at the top)
+    projects.unshift(copy);
+
+    saveToStorage();
+    renderProjects();
+
+    SoundManager.playSuccess();
+    showToast('프로젝트가 복사되었습니다!', 'success');
 }
 
 // --- Logic ---
