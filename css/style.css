@@ -121,6 +121,10 @@ body {
     overflow: hidden;
 }
 
+#hero-video.video-visible {
+    opacity: 0.6 !important;
+}
+
 .particle {
     position: absolute;
     background: rgba(245, 197, 66, 0.1);
