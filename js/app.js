@@ -607,7 +607,48 @@ function initFirebase() {
     if (!firebaseConfig.apiKey) return;
     firebase.initializeApp(firebaseConfig);
     db = firebase.firestore(); auth = firebase.auth();
-    auth.onAuthStateChanged(user => { currentUser = user; init(); });
+    auth.onAuthStateChanged(user => {
+        currentUser = user;
+        updateAuthUI(user);
+        init();
+    });
+}
+
+window.handleAuthClick = function () {
+    if (!auth) {
+        showToast('Firebase 설정이 필요합니다.', 'error');
+        return;
+    }
+    if (currentUser) {
+        auth.signOut().then(() => {
+            showToast('로그아웃 되었습니다.', 'success');
+        });
+    } else {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(error => {
+            console.error(error);
+            showToast('로그인에 실패했습니다.', 'error');
+        });
+    }
+}
+
+function updateAuthUI(user) {
+    const authBtn = document.getElementById('auth-btn');
+    const userInfo = document.getElementById('user-info');
+    const userPhoto = document.getElementById('user-photo');
+    const userName = document.getElementById('user-name');
+
+    if (!authBtn) return;
+
+    if (user) {
+        authBtn.innerText = '로그아웃';
+        if (userInfo) userInfo.classList.remove('hidden');
+        if (userPhoto) userPhoto.src = user.photoURL;
+        if (userName) userName.innerText = user.displayName;
+    } else {
+        authBtn.innerText = 'Google 로그인';
+        if (userInfo) userInfo.classList.add('hidden');
+    }
 }
 
 function saveToStorage() {
