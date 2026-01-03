@@ -395,13 +395,17 @@ function calculateProgress(checklist) {
         const target = item.target || 1;
         const isCalendar = item.isCalendar || item.itemMode === 'calendar';
         
-        // Handle calendar items - based on whether they have any dates
+        // Handle calendar items - based on dates count vs target
         if (isCalendar) {
             const dates = item.dates || [];
-            if (dates.length > 0) {
-                totalCurrent += target * 0.5; // 기록이 있으면 진행중으로 50%
-            }
-            totalTarget += target;
+            // 이번 달 기록 수 계산
+            const now = new Date();
+            const thisMonthDates = dates.filter(d => {
+                const date = new Date(d);
+                return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+            });
+            totalCurrent += thisMonthDates.length; // 실제 달성 횟수
+            totalTarget += target; // 목표 횟수
         }
         // Handle counter items
         else if (item.isCounter) {
@@ -431,9 +435,17 @@ function getChecklistStats(checklist) {
         const isCalendar = item.isCalendar || item.itemMode === 'calendar';
         
         if (isCalendar) {
-            // Calendar items: in_progress if has dates
+            // Calendar items: check this month's dates vs target
             const dates = item.dates || [];
-            if (dates.length > 0) stats.in_progress++;
+            const target = item.target || 1;
+            const now = new Date();
+            const thisMonthCount = dates.filter(d => {
+                const date = new Date(d);
+                return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+            }).length;
+            
+            if (thisMonthCount >= target) stats.completed++;
+            else if (thisMonthCount > 0) stats.in_progress++;
             else stats.pending++;
         } else if (item.isCounter) {
             // Counter items: completed if current >= target
@@ -776,9 +788,10 @@ function addChecklistItem(text = '', target = 1, itemMode = 'checkbox') {
                     <input type="number" min="1" value="${target}" class="w-12 bg-transparent text-sm text-center text-white outline-none focus:text-primary-gold">
                     <span class="text-xs text-gray-500 ml-1">회</span>
                 </div>
-                <div class="calendar-hint ${isCalendar ? '' : 'hidden'} flex items-center text-xs text-blue-400">
-                    <i data-lucide="info" class="w-3 h-3 mr-1"></i>
-                    달력에서 날짜를 클릭하여 기록
+                <div class="calendar-input-container ${isCalendar ? '' : 'hidden'} flex items-center bg-navy-dark border border-navy-muted rounded-lg px-2 py-1.5">
+                    <span class="text-[10px] text-gray-500 font-bold mr-2 uppercase tracking-tighter">목표</span>
+                    <input type="number" min="1" value="${target}" class="calendar-target w-12 bg-transparent text-sm text-center text-white outline-none focus:text-primary-gold">
+                    <span class="text-xs text-gray-500 ml-1">회/월</span>
                 </div>
             </div>
         </div>
@@ -812,9 +825,9 @@ window.setItemMode = function (btn, newMode) {
 
     // Update Input Visibility
     const counterContainer = row.querySelector('.counter-input-container');
-    const calendarHint = row.querySelector('.calendar-hint');
+    const calendarContainer = row.querySelector('.calendar-input-container');
     counterContainer.classList.toggle('hidden', !isCounter);
-    calendarHint.classList.toggle('hidden', !isCalendar);
+    calendarContainer.classList.toggle('hidden', !isCalendar);
 
     SoundManager.playClick();
 }
@@ -833,12 +846,21 @@ async function saveProject() {
         const itemMode = row.querySelector('.item-mode').value;
         const isCounter = itemMode === 'counter';
         const isCalendar = itemMode === 'calendar';
+        
+        // Get target based on mode
+        let target = 1;
+        if (isCounter) {
+            target = parseInt(row.querySelector('.counter-input-container input[type="number"]').value) || 1;
+        } else if (isCalendar) {
+            target = parseInt(row.querySelector('.calendar-target').value) || 1;
+        }
+        
         if (text) checklist.push({
             text,
             isCounter,
             isCalendar,
             itemMode,
-            target: isCounter ? parseInt(row.querySelector('input[type="number"]').value) || 1 : 1,
+            target,
             current: 0,
             checked: false,
             status: 'pending',
@@ -952,17 +974,26 @@ function showDetailModal(project) {
     
     const getCalendarUI = (item, idx) => {
         const dates = item.dates || [];
+        const target = item.target || 1;
         const thisMonth = new Date();
         const monthCount = dates.filter(d => {
             const date = new Date(d);
             return date.getMonth() === thisMonth.getMonth() && date.getFullYear() === thisMonth.getFullYear();
         }).length;
         
+        const progress = Math.round((monthCount / target) * 100);
+        const isOver = monthCount >= target;
+        const progressColor = isOver ? 'text-success' : 'text-blue-400';
+        const bgColor = isOver ? 'bg-success/20' : 'bg-blue-500/20';
+        
         return `
             <div class="flex items-center gap-2">
-                <span class="text-xs text-blue-400 font-bold">이번달 ${monthCount}회</span>
+                <div class="flex flex-col items-end">
+                    <span class="${progressColor} text-xs font-bold">${monthCount}/${target}회</span>
+                    <span class="text-[10px] ${isOver ? 'text-success' : 'text-gray-500'}">${progress}%${isOver ? ' 🎉' : ''}</span>
+                </div>
                 <button onclick="openCalendarModal('${project.id}', ${idx})" 
-                    class="flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all">
+                    class="flex items-center gap-1 px-3 py-2 rounded-lg ${bgColor} ${progressColor} hover:opacity-80 transition-all">
                     <i data-lucide="calendar" class="w-4 h-4"></i>
                     <span class="text-xs font-bold">달력</span>
                 </button>
@@ -1132,17 +1163,22 @@ function renderCalendarModal() {
                 
                 <!-- Stats -->
                 <div class="p-4 bg-navy-dark border-t border-navy-muted">
-                    <div class="flex items-center justify-between">
-                        <div class="text-center">
-                            <p class="text-2xl font-black text-success">${monthDates.length}</p>
-                            <p class="text-xs text-gray-500">이번달</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-2xl font-black text-primary-gold">${dates.length}</p>
-                            <p class="text-xs text-gray-500">전체</p>
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-gray-400">이번달 목표</span>
+                                <span class="text-sm font-bold ${monthDates.length >= (item.target || 1) ? 'text-success' : 'text-white'}">${monthDates.length} / ${item.target || 1}회</span>
+                            </div>
+                            <div class="w-full h-3 bg-navy-muted rounded-full overflow-hidden">
+                                <div class="h-full ${monthDates.length >= (item.target || 1) ? 'bg-success' : 'bg-primary-gold'} transition-all" style="width: ${Math.min(100, Math.round((monthDates.length / (item.target || 1)) * 100))}%"></div>
+                            </div>
+                            <div class="flex justify-between mt-1">
+                                <span class="text-xs text-gray-500">전체 ${dates.length}회</span>
+                                <span class="text-xs font-bold ${monthDates.length >= (item.target || 1) ? 'text-success' : 'text-primary-gold'}">${Math.round((monthDates.length / (item.target || 1)) * 100)}%${monthDates.length >= (item.target || 1) ? ' 🎉' : ''}</span>
+                            </div>
                         </div>
                         <button onclick="document.getElementById('calendar-modal').remove()" 
-                            class="px-4 py-2 bg-primary-gold text-navy-dark font-bold rounded-lg hover:bg-yellow-400 transition-colors">
+                            class="px-4 py-2 bg-primary-gold text-navy-dark font-bold rounded-lg hover:bg-yellow-400 transition-colors whitespace-nowrap">
                             완료
                         </button>
                     </div>
