@@ -482,17 +482,7 @@ function openModal(editingId = null) {
     addChecklistItem();
 }
 
-const STOCK_IMAGES = [
-    'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=300&q=80',
-    'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=300&q=80',
-    'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=300&q=80',
-    'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=300&q=80',
-    'https://images.unsplash.com/photo-1517960413843-0aee8e2b3285?auto=format&fit=crop&w=300&q=80',
-    'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=300&q=80',
-    'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=300&q=80',
-    'https://images.unsplash.com/photo-1552674605-db6ffd547515?auto=format&fit=crop&w=300&q=80',
-];
-
+// Thumbnail Tab Switching
 function setThumbTab(tab) {
     ['gradient', 'gallery', 'custom'].forEach(t => {
         document.getElementById(`thumb-content-${t}`).classList.add('hidden');
@@ -500,15 +490,10 @@ function setThumbTab(tab) {
     });
     document.getElementById(`thumb-content-${tab}`).classList.remove('hidden');
     document.getElementById(`tab-${tab}`).classList.add('text-primary-gold', 'font-bold');
-    if (tab === 'gallery' && document.getElementById('gallery-grid').innerHTML.trim() === '') renderGallery();
-}
-
-function renderGallery() {
-    document.getElementById('gallery-grid').innerHTML = STOCK_IMAGES.map(src => `
-        <div class="aspect-square rounded-lg overflow-hidden cursor-pointer border-2 border-transparent hover:border-primary-gold transition-colors" onclick="selectThumbnail('image', '${src.replace('w=300', 'w=800')}', this)">
-            <img src="${src}" class="w-full h-full object-cover">
-        </div>
-    `).join('');
+    // Gallery tab now shows free image site links (no rendering needed)
+    if (tab === 'gallery') {
+        lucide.createIcons(); // Refresh icons for the gallery cards
+    }
 }
 
 function selectThumbnail(type, value, element) {
@@ -516,7 +501,7 @@ function selectThumbnail(type, value, element) {
     document.getElementById('selected-thumb-value').value = value;
 
     // UI Update
-    document.querySelectorAll('.thumbnail-option, #gallery-grid > div').forEach(opt => opt.classList.remove('selected', 'border-primary-gold'));
+    document.querySelectorAll('.thumbnail-option').forEach(opt => opt.classList.remove('selected', 'border-primary-gold'));
     if (element) {
         element.classList.add(element.classList.contains('thumbnail-option') ? 'selected' : 'border-primary-gold');
     }
