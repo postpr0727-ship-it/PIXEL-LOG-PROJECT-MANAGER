@@ -134,7 +134,7 @@
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-12 z-10">
 
         <!-- Dashboard Section -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 animate-fade-in-up">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 animate-fade-in-up">
             <!-- Total Projects -->
             <div
                 class="relative bg-navy-light rounded-2xl p-8 border border-navy-muted hover:border-primary-gold/50 shadow-xl transition-all duration-300 group overflow-hidden">
@@ -172,6 +172,20 @@
                     <div class="absolute inset-0 flex items-center justify-center">
                         <i data-lucide="activity" class="w-10 h-10 text-primary-gold"></i>
                     </div>
+                </div>
+            </div>
+
+            <!-- In Progress -->
+            <div
+                class="relative bg-navy-light rounded-2xl p-8 border border-navy-muted hover:border-blue-500/50 shadow-xl transition-all duration-300 group overflow-hidden">
+                <div
+                    class="absolute right-0 top-0 p-4 opacity-10 transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition-transform duration-700">
+                    <i data-lucide="loader" class="w-40 h-40 text-blue-500"></i>
+                </div>
+                <div class="relative z-10 flex flex-col justify-between h-full min-h-[140px]">
+                    <p class="text-blue-400 text-sm font-bold uppercase tracking-wider mb-2">In Progress</p>
+                    <h3 class="text-6xl font-black stat-value tracking-tight" id="stat-in-progress">0</h3>
+                    <p class="text-gray-500 text-xs mt-2">현재 진행 중인 항목</p>
                 </div>
             </div>
 

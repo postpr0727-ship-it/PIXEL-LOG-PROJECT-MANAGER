@@ -325,7 +325,7 @@ function createCardElement(project, isCompleted) {
     let progressColor = 'bg-primary-gold';
     if (progress === 100) progressColor = 'bg-success';
 
-    const completedCount = project.checklist.filter(i => i.checked).length;
+    const stats = getChecklistStats(project.checklist);
     const totalCount = project.checklist.length;
 
     div.innerHTML = `
@@ -349,7 +349,10 @@ function createCardElement(project, isCompleted) {
             <p class="text-gray-400 text-sm line-clamp-2 mb-4 flex-1">${project.description || '설명 없음'}</p>
             <div class="text-xs text-gray-500 mb-3 flex justify-between">
                 <span>${project.startDate} ~ ${project.endDate}</span>
-                <span>${completedCount}/${totalCount} 완료</span>
+                <div class="flex items-center gap-2">
+                    ${stats.in_progress > 0 ? `<span class="text-blue-400">🔵 ${stats.in_progress}</span>` : ''}
+                    <span class="text-success">✅ ${stats.completed}/${totalCount}</span>
+                </div>
             </div>
             <div class="relative w-full h-3 bg-navy-dark rounded-full overflow-hidden">
                 <div class="absolute top-0 left-0 h-full ${progressColor} progress-fill shadow-[0_0_10px_rgba(245,197,66,0.5)]" style="width: ${progress}%"></div>
@@ -390,10 +393,43 @@ function calculateProgress(checklist) {
     let totalCurrent = 0, totalTarget = 0;
     checklist.forEach(item => {
         const target = item.target || 1;
-        totalCurrent += item.current !== undefined ? item.current : (item.checked ? target : 0);
-        totalTarget += target;
+        
+        // Handle counter items
+        if (item.isCounter) {
+            totalCurrent += item.current !== undefined ? item.current : 0;
+            totalTarget += target;
+        } else {
+            // Handle status-based items (pending/in_progress/completed)
+            const status = item.status || (item.checked ? 'completed' : 'pending');
+            if (status === 'completed') {
+                totalCurrent += target;
+            } else if (status === 'in_progress') {
+                totalCurrent += target * 0.5; // 진행중은 50%
+            }
+            // pending은 0
+            totalTarget += target;
+        }
     });
     return totalTarget === 0 ? 0 : Math.min(100, Math.round((totalCurrent / totalTarget) * 100));
+}
+
+// Get checklist stats (pending, in_progress, completed counts)
+function getChecklistStats(checklist) {
+    const stats = { pending: 0, in_progress: 0, completed: 0 };
+    if (!checklist) return stats;
+    
+    checklist.forEach(item => {
+        if (item.isCounter) {
+            // Counter items: completed if current >= target
+            if (item.current >= item.target) stats.completed++;
+            else if (item.current > 0) stats.in_progress++;
+            else stats.pending++;
+        } else {
+            const status = item.status || (item.checked ? 'completed' : 'pending');
+            stats[status]++;
+        }
+    });
+    return stats;
 }
 
 // --- Modal Actions ---
@@ -793,11 +829,25 @@ async function saveProject() {
 }
 
 function renderDashboard() {
-    const total = projects.length, avg = total > 0 ? Math.round(projects.reduce((s, p) => s + p.progress, 0) / total) : 0;
+    const total = projects.length;
+    const avg = total > 0 ? Math.round(projects.reduce((s, p) => s + p.progress, 0) / total) : 0;
+    const completedProjects = projects.filter(p => p.progress === 100).length;
+    
+    // Count total in-progress items across all projects
+    let totalInProgress = 0;
+    projects.forEach(p => {
+        const stats = getChecklistStats(p.checklist);
+        totalInProgress += stats.in_progress;
+    });
+    
     document.getElementById('stat-total').innerText = total;
-    document.getElementById('stat-completed').innerText = projects.filter(p => p.progress === 100).length;
+    document.getElementById('stat-completed').innerText = completedProjects;
     document.getElementById('stat-avg').innerText = avg;
     document.getElementById('stat-chart').style.strokeDashoffset = 364.4 - (364.4 * avg) / 100;
+    
+    // Update in-progress stat if element exists
+    const inProgressEl = document.getElementById('stat-in-progress');
+    if (inProgressEl) inProgressEl.innerText = totalInProgress;
 }
 
 function createParticles() {
@@ -829,7 +879,33 @@ function toggleChecklistModal(id) {
 }
 
 function showDetailModal(project) {
-    const safeChecklist = project.checklist.map(i => ({ ...i, target: i.target || 1, current: i.current !== undefined ? i.current : (i.checked ? i.target : 0), isCounter: i.isCounter !== undefined ? i.isCounter : (i.target > 1) }));
+    const safeChecklist = project.checklist.map(i => ({ 
+        ...i, 
+        target: i.target || 1, 
+        current: i.current !== undefined ? i.current : (i.checked ? i.target : 0), 
+        isCounter: i.isCounter !== undefined ? i.isCounter : (i.target > 1),
+        status: i.status || (i.checked ? 'completed' : 'pending')
+    }));
+    
+    const stats = getChecklistStats(project.checklist);
+    
+    const getStatusUI = (item, idx) => {
+        const status = item.status || 'pending';
+        const statusConfig = {
+            pending: { icon: 'circle', color: 'text-gray-500', bg: 'bg-gray-500/20', label: '미시작' },
+            in_progress: { icon: 'loader', color: 'text-blue-400', bg: 'bg-blue-500/20', label: '진행중' },
+            completed: { icon: 'check-circle', color: 'text-success', bg: 'bg-success/20', label: '완료' }
+        };
+        const config = statusConfig[status];
+        return `
+            <button onclick="cycleItemStatus('${project.id}', ${idx})" 
+                class="flex items-center gap-2 px-3 py-2 rounded-lg ${config.bg} ${config.color} hover:opacity-80 transition-all min-w-[90px] justify-center">
+                <i data-lucide="${config.icon}" class="w-5 h-5"></i>
+                <span class="text-xs font-bold">${config.label}</span>
+            </button>
+        `;
+    };
+    
     const html = `
         <div id="detail-backdrop" class="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" onclick="this.remove()">
             <div class="bg-navy-light w-full max-w-lg rounded-xl border border-navy-muted overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
@@ -838,20 +914,35 @@ function showDetailModal(project) {
                    <button onclick="document.getElementById('detail-backdrop').remove()" class="text-gray-400 hover:text-white"><i data-lucide="x"></i></button>
                 </div>
                 <div class="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                    <p class="text-gray-300 text-sm mb-6">${project.description || ''}</p>
+                    <p class="text-gray-300 text-sm mb-4">${project.description || ''}</p>
+                    
+                    <!-- Status Summary -->
+                    <div class="flex items-center gap-4 mb-6 p-3 bg-navy-dark rounded-lg">
+                        <div class="flex items-center gap-1 text-xs">
+                            <span class="w-3 h-3 rounded-full bg-gray-500"></span>
+                            <span class="text-gray-400">미시작 ${stats.pending}</span>
+                        </div>
+                        <div class="flex items-center gap-1 text-xs">
+                            <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                            <span class="text-blue-400">진행중 ${stats.in_progress}</span>
+                        </div>
+                        <div class="flex items-center gap-1 text-xs">
+                            <span class="w-3 h-3 rounded-full bg-success"></span>
+                            <span class="text-success">완료 ${stats.completed}</span>
+                        </div>
+                    </div>
+                    
                     <div class="space-y-3">
                         ${safeChecklist.map((item, idx) => `
-                            <div class="flex items-center justify-between p-4 rounded-xl bg-navy-dark border border-navy-muted">
-                                <span class="${item.current >= item.target ? 'text-gray-500 line-through' : 'text-gray-200'} flex-1 text-sm font-medium">${item.text}</span>
+                            <div class="flex items-center justify-between p-4 rounded-xl bg-navy-dark border border-navy-muted gap-3">
+                                <span class="${item.status === 'completed' ? 'text-gray-500 line-through' : item.status === 'in_progress' ? 'text-blue-300' : 'text-gray-200'} flex-1 text-sm font-medium">${item.text}</span>
                                 ${item.isCounter ? `
                                     <div class="flex items-center gap-3 bg-navy-light p-1 rounded-full border border-navy-muted">
                                         <button onclick="updateItemProgress('${project.id}', ${idx}, -1)" class="w-8 h-8 rounded-full bg-navy-dark text-primary-gold flex items-center justify-center font-bold disabled:opacity-30"><i data-lucide="minus" class="w-4 h-4"></i></button>
                                         <div class="flex flex-col items-center min-w-[50px]"><span class="text-white font-mono text-xs font-bold">${item.current}/${item.target}</span><div class="w-full h-1 bg-navy-muted rounded-full overflow-hidden mt-1"><div class="h-full bg-primary-gold transition-all" style="width:${(item.current / item.target) * 100}%"></div></div></div>
                                         <button onclick="updateItemProgress('${project.id}', ${idx}, 1)" class="w-8 h-8 rounded-full bg-navy-dark text-primary-gold flex items-center justify-center font-bold disabled:opacity-30"><i data-lucide="plus" class="w-4 h-4"></i></button>
                                     </div>
-                                ` : `
-                                    <input type="checkbox" ${item.current >= item.target ? 'checked' : ''} onchange="updateItemProgress('${project.id}', ${idx}, 'toggle')" class="w-6 h-6 rounded border-navy-muted">
-                                `}
+                                ` : getStatusUI(item, idx)}
                             </div>
                         `).join('')}
                     </div>
@@ -864,11 +955,53 @@ function showDetailModal(project) {
     lucide.createIcons();
 }
 
+// Cycle through status: pending -> in_progress -> completed -> pending
+window.cycleItemStatus = async function(id, idx) {
+    const p = projects.find(x => x.id === id);
+    const item = p.checklist[idx];
+    const was = p.progress === 100;
+    
+    const statusOrder = ['pending', 'in_progress', 'completed'];
+    const currentStatus = item.status || 'pending';
+    const currentIndex = statusOrder.indexOf(currentStatus);
+    const nextIndex = (currentIndex + 1) % statusOrder.length;
+    
+    item.status = statusOrder[nextIndex];
+    item.checked = item.status === 'completed';
+    item.current = item.status === 'completed' ? (item.target || 1) : (item.status === 'in_progress' ? 0.5 : 0);
+    
+    p.progress = calculateProgress(p.checklist);
+    await saveToStorage();
+    renderProjects();
+    
+    const bd = document.getElementById('detail-backdrop');
+    if (bd) { bd.remove(); showDetailModal(p); }
+    
+    SoundManager.playClick();
+    if (p.progress === 100 && !was) { 
+        SoundManager.playComplete(); 
+        triggerConfetti(); 
+        showToast('완수했습니다! 🏆', 'success'); 
+    }
+}
+
 window.updateItemProgress = async function (id, idx, action) {
     const p = projects.find(x => x.id === id), item = p.checklist[idx], was = p.progress === 100;
-    if (action === 'toggle') item.current = item.current >= item.target ? 0 : item.target;
-    else if (item.current + action >= 0 && item.current + action <= item.target) item.current += action;
+    if (action === 'toggle') {
+        // Legacy toggle for counter items
+        item.current = item.current >= item.target ? 0 : item.target;
+    } else if (item.current + action >= 0 && item.current + action <= item.target) {
+        item.current += action;
+    }
     item.checked = item.current >= item.target;
+    
+    // Update status based on current for counter items
+    if (item.isCounter) {
+        if (item.current >= item.target) item.status = 'completed';
+        else if (item.current > 0) item.status = 'in_progress';
+        else item.status = 'pending';
+    }
+    
     p.progress = calculateProgress(p.checklist);
     await saveToStorage();
     renderProjects();
