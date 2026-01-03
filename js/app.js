@@ -99,6 +99,7 @@ const CATEGORY_COLORS = {
     diet: 'bg-category-diet',
     habit: 'bg-category-habit',
     side: 'bg-category-side',
+    project: 'bg-category-project',
     custom: 'bg-gray-500'
 };
 
@@ -118,6 +119,7 @@ const CATEGORY_LABELS = {
     diet: '다이어트 🥗',
     habit: '습관형성 ⏰',
     side: '사이드프로젝트 🚀',
+    project: '프로젝트 📋',
     custom: '직접지정 ⭐'
 };
 

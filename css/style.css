@@ -26,6 +26,7 @@
     --cat-diet: #84cc16;
     --cat-habit: #f97316;
     --cat-side: #e11d48;
+    --cat-project: #8b5cf6;
 }
 
 /* Date Picker Icon Visibility */
@@ -279,6 +280,7 @@ body {
 .bg-category-diet { background-color: var(--cat-diet); }
 .bg-category-habit { background-color: var(--cat-habit); }
 .bg-category-side { background-color: var(--cat-side); }
+.bg-category-project { background-color: var(--cat-project); }
 
 /* Select optgroup styling */
 select optgroup {
