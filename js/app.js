@@ -538,7 +538,7 @@ function selectThumbnail(type, value, element) {
 // URL Input Handler with Preview
 window.handleUrlInput = function () {
     const input = document.getElementById('img-url-input');
-    const url = input.value.trim();
+    let url = input.value.trim();
 
     if (!url) {
         showToast('이미지 URL을 입력해주세요.', 'warning');
@@ -553,6 +553,22 @@ window.handleUrlInput = function () {
         return;
     }
 
+    // Convert Google Drive links to direct image URLs
+    if (url.includes('drive.google.com')) {
+        const fileIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (fileIdMatch) {
+            const fileId = fileIdMatch[1];
+            url = `https://drive.google.com/uc?export=view&id=${fileId}`;
+            console.log('Converted Google Drive link:', url);
+            showToast('Google Drive 링크를 변환했습니다.', 'success');
+            // Update input to show converted URL
+            input.value = url;
+        } else {
+            showToast('Google Drive 파일 ID를 찾을 수 없습니다.\n공유 설정을 "링크가 있는 모든 사용자"로 변경해주세요.', 'error');
+            return;
+        }
+    }
+
     // Show preview
     const previewContainer = document.getElementById('url-preview-container');
     const previewImg = document.getElementById('url-preview-img');
@@ -560,7 +576,7 @@ window.handleUrlInput = function () {
     if (previewImg && previewContainer) {
         previewImg.src = url;
         previewImg.onerror = () => {
-            showToast('이미지를 불러올 수 없습니다.\nURL을 확인해주세요.', 'error');
+            showToast('이미지를 불러올 수 없습니다.\n\nGoogle Drive 이미지인 경우:\n공유 설정을 "링크가 있는 모든 사용자"로 변경해주세요.', 'error');
             previewContainer.classList.add('hidden');
         };
         previewImg.onload = () => {
