@@ -555,6 +555,13 @@ window.handleUrlInput = function () {
 
     // Convert Google Drive links to direct image URLs
     if (url.includes('drive.google.com')) {
+        // Check if it's a folder link
+        if (url.includes('/folders/') || url.includes('/drive/folders/')) {
+            showToast('폴더 링크는 사용할 수 없습니다.\n\n개별 이미지 파일을 우클릭하여\n"공유" → "링크 복사"를 선택해주세요.', 'error');
+            return;
+        }
+
+        // Extract file ID from file link
         const fileIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
         if (fileIdMatch) {
             const fileId = fileIdMatch[1];
@@ -564,7 +571,7 @@ window.handleUrlInput = function () {
             // Update input to show converted URL
             input.value = url;
         } else {
-            showToast('Google Drive 파일 ID를 찾을 수 없습니다.\n공유 설정을 "링크가 있는 모든 사용자"로 변경해주세요.', 'error');
+            showToast('Google Drive 파일 링크가 아닙니다.\n\n올바른 형식:\nhttps://drive.google.com/file/d/FILE_ID/view', 'error');
             return;
         }
     }
