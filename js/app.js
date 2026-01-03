@@ -551,47 +551,83 @@ function selectThumbnail(type, value, element) {
 }
 
 async function uploadImageToStorage(file) {
-    // Always use base64 storage (no Firebase Storage)
-    // File size limit: 500KB to avoid Firestore 1MB document limit
-    const MAX_SIZE = 500 * 1024; // 500KB
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB limit for Firebase Storage
 
+    // Check file size
     if (file.size > MAX_SIZE) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        showToast(`이미지 크기가 너무 큽니다!\n현재: ${fileSizeMB}MB / 최대: 500KB\n이미지를 압축해주세요.`, 'error');
+        showToast(`이미지 크기가 너무 큽니다!\n현재: ${fileSizeMB}MB / 최대: 10MB`, 'error');
         throw new Error('File too large');
     }
 
-    // Convert to base64
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            console.log('Image converted to base64 successfully');
-            resolve(e.target.result);
-        };
-        reader.onerror = () => {
-            console.error('Failed to read file');
-            reject(new Error('Failed to read file'));
-        };
-        reader.readAsDataURL(file);
-    });
+    // Use Firebase Storage if available
+    if (storage && currentUser) {
+        try {
+            console.log('Uploading to Firebase Storage...');
+
+            // Create unique filename
+            const timestamp = Date.now();
+            const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const filename = `thumbnails/${currentUser.uid}/${timestamp}_${sanitizedFileName}`;
+            const storageRef = storage.ref(filename);
+
+            // Upload file
+            const uploadTask = storageRef.put(file);
+
+            return new Promise((resolve, reject) => {
+                uploadTask.on('state_changed',
+                    (snapshot) => {
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        console.log('Upload progress:', progress.toFixed(0) + '%');
+                    },
+                    (error) => {
+                        console.error('Storage upload error:', error);
+                        reject(error);
+                    },
+                    async () => {
+                        try {
+                            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                            console.log('Upload successful! URL:', downloadURL);
+                            resolve(downloadURL);
+                        } catch (error) {
+                            console.error('Failed to get download URL:', error);
+                            reject(error);
+                        }
+                    }
+                );
+            });
+        } catch (error) {
+            console.error('Storage upload failed:', error);
+            throw error;
+        }
+    } else {
+        // Fallback to base64 if not logged in
+        console.warn('Not logged in - cannot use Firebase Storage');
+        showToast('Firebase Storage를 사용하려면 로그인이 필요합니다.', 'warning');
+        throw new Error('Login required for Firebase Storage');
+    }
 }
 
 window.handleImageUpload = async function (input) {
     const file = input.files[0];
     if (!file) return;
 
-    // File size limit: 500KB
-    const MAX_SIZE = 500 * 1024;
-    const fileSizeKB = (file.size / 1024).toFixed(0);
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
     const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
 
-    console.log('File selected:', file.name, 'Size:', fileSizeKB + 'KB');
+    console.log('File selected:', file.name, 'Size:', fileSizeMB + 'MB');
+
+    // Check if logged in
+    if (!storage || !currentUser) {
+        showToast('Firebase Storage를 사용하려면 로그인이 필요합니다.', 'warning');
+        input.value = '';
+        return;
+    }
 
     // Check file size before upload
     if (file.size > MAX_SIZE) {
-        console.log('File too large!', fileSizeKB, 'KB > 500KB');
-        showToast(`이미지 용량이 너무 큽니다!\n현재: ${fileSizeMB}MB / 최대: 500KB\n이미지를 압축해주세요.`, 'error');
-        // Reset file input
+        console.log('File too large!', fileSizeMB, 'MB > 10MB');
+        showToast(`이미지 용량이 너무 큽니다!\n현재: ${fileSizeMB}MB / 최대: 10MB`, 'error');
         input.value = '';
         return;
     }
@@ -604,7 +640,7 @@ window.handleImageUpload = async function (input) {
         uploadBtn.style.pointerEvents = 'none';
     }
 
-    showToast('이미지 업로드 중...', 'success');
+    showToast('Firebase Storage에 업로드 중...', 'success');
 
     try {
         const imageUrl = await uploadImageToStorage(file);
@@ -612,10 +648,16 @@ window.handleImageUpload = async function (input) {
         showToast('이미지 업로드 완료!', 'success');
     } catch (error) {
         console.error('Upload failed:', error);
-        if (error.message !== 'File too large') {
+
+        // Check for specific errors
+        if (error.code === 'storage/unauthorized') {
+            showToast('Firebase Storage 권한이 없습니다.\nStorage 규칙을 설정해주세요.', 'error');
+        } else if (error.message?.includes('CORS')) {
+            showToast('CORS 에러가 발생했습니다.\nFirebase Storage 규칙을 확인해주세요.', 'error');
+        } else if (error.message !== 'File too large' && error.message !== 'Login required for Firebase Storage') {
             showToast('이미지 업로드 실패', 'error');
         }
-        // Reset file input on error
+
         input.value = '';
     } finally {
         if (uploadBtn) {
@@ -901,7 +943,7 @@ async function saveToStorage() {
     } catch (error) {
         console.error('Save error:', error);
         if (error.code === 'resource-exhausted' || error.message?.includes('exceeds the maximum allowed size')) {
-            showToast('전체 프로젝트 데이터가 너무 큽니다 (1MB 초과).\n\n해결 방법:\n1. 기존 프로젝트의 업로드한 이미지를 삭제\n2. 또는 이미지 URL 방식 사용\n3. 일부 프로젝트 삭제', 'error');
+            showToast('Firestore 데이터 크기 제한 초과 (1MB).\n\nFirebase Storage를 사용하면 용량 걱정 없습니다!\n이미지 업로드 시 Storage를 사용하세요.', 'error');
         } else if (error.name === 'QuotaExceededError') {
             showToast('저장 공간이 부족합니다.\n일부 프로젝트를 삭제해주세요.', 'error');
         } else {
