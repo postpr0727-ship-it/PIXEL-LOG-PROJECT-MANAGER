@@ -176,6 +176,9 @@ function showToast(msg, type = 'info') {
     } else if (type === 'error') {
         bgClass = 'bg-red-600 border-red-400 text-white';
         icon = 'alert-triangle';
+    } else if (type === 'warning') {
+        bgClass = 'bg-yellow-600 border-yellow-400 text-white';
+        icon = 'alert-circle';
     } else {
         bgClass = 'bg-navy-muted border-gray-500 text-white';
     }
@@ -582,30 +585,40 @@ async function uploadImageToStorage(file) {
                     console.log('Upload progress:', progress + '%');
                 },
                 async (error) => {
-                    console.error('Upload error:', error);
-                    // Check if it's a CORS or permission error
-                    if (error.code === 'storage/unauthorized' || error.message?.includes('CORS')) {
-                        console.log('Storage error, falling back to base64');
-                        showToast('Storage 업로드 실패, 로컬 저장으로 전환합니다.', 'error');
-                        // Fallback to base64
-                        if (file.size > MAX_SIZE) {
-                            showToast('이미지 크기가 너무 큽니다 (최대 500KB). Firebase Storage 규칙을 설정하거나 이미지를 압축해주세요.', 'error');
-                            reject(new Error('File too large'));
-                            return;
-                        }
+                    console.error('Upload error detected:', error);
+                    console.error('Error code:', error.code);
+                    console.error('Error message:', error.message);
+
+                    // Any upload error should trigger base64 fallback
+                    // Common errors: storage/unauthorized, CORS, network errors
+                    console.log('Storage upload failed, falling back to base64');
+                    showToast('Storage 업로드 실패, 로컬 저장으로 전환합니다.', 'warning');
+
+                    // Fallback to base64
+                    if (file.size > MAX_SIZE) {
+                        showToast('이미지 크기가 너무 큽니다 (최대 500KB).\nFirebase Storage 규칙을 설정하거나 이미지를 압축해주세요.', 'error');
+                        reject(new Error('File too large'));
+                        return;
+                    }
+
+                    try {
                         const reader = new FileReader();
-                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onload = (e) => {
+                            console.log('Successfully converted to base64');
+                            resolve(e.target.result);
+                        };
                         reader.onerror = () => reject(new Error('Failed to read file'));
                         reader.readAsDataURL(file);
-                    } else {
-                        showToast('이미지 업로드 실패', 'error');
-                        reject(error);
+                    } catch (readError) {
+                        console.error('Failed to read file:', readError);
+                        reject(readError);
                     }
                 },
                 async () => {
                     // Upload completed, get download URL
                     try {
                         const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                        console.log('Storage upload successful:', downloadURL);
                         resolve(downloadURL);
                     } catch (error) {
                         console.error('Failed to get download URL:', error);
