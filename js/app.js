@@ -568,24 +568,55 @@ function closeModal() { modal.classList.add('hidden'); }
 
 function addChecklistItem(text = '', target = 1, isCounter = false) {
     const row = document.createElement('div');
-    row.className = 'flex gap-2 checklist-row items-center py-1 group/row';
+    row.className = 'flex gap-2 checklist-row items-center py-2 group/row border-b border-navy-muted/30 last:border-0';
     row.innerHTML = `
-        <button type="button" onclick="toggleItemMode(this)" class="p-2 rounded bg-navy-muted/50 text-gray-500 hover:text-primary-gold transition-colors shrink-0"><i data-lucide="${isCounter ? 'hash' : 'check-square'}" class="w-4 h-4"></i></button>
-        <input type="text" value="${text}" class="flex-1 bg-navy-dark border border-navy-muted rounded px-3 py-2 text-sm text-white outline-none focus:border-primary-gold" placeholder="할 일 입력" required>
-        <div class="relative w-20 counter-input ${isCounter ? '' : 'hidden'}"><input type="number" min="1" value="${target}" class="w-full bg-navy-dark border border-navy-muted rounded px-2 py-2 text-sm text-center text-white outline-none focus:border-primary-gold"><span class="absolute right-7 top-1/2 -translate-y-1/2 text-xs text-gray-500">회</span></div>
+        <div class="flex flex-col gap-1 items-center bg-navy-dark/50 p-1 rounded-lg border border-navy-muted">
+            <button type="button" onclick="toggleItemMode(this, false)" class="mode-btn p-1.5 rounded-md transition-all ${!isCounter ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}" title="일반 체크박스">
+                <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
+            </button>
+            <button type="button" onclick="toggleItemMode(this, true)" class="mode-btn p-1.5 rounded-md transition-all ${isCounter ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}" title="회차 카운터">
+                <i data-lucide="hash" class="w-3.5 h-3.5"></i>
+            </button>
+        </div>
+        <div class="flex-1 flex flex-col gap-2">
+            <input type="text" value="${text}" class="w-full bg-navy-dark border border-navy-muted rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary-gold" placeholder="수행할 목표 입력" required>
+            <div class="flex items-center gap-2">
+                <div class="counter-input-container ${isCounter ? '' : 'hidden'} flex items-center bg-navy-dark border border-navy-muted rounded-lg px-2 py-1.5">
+                    <span class="text-[10px] text-gray-500 font-bold mr-2 uppercase tracking-tighter">Goal</span>
+                    <input type="number" min="1" value="${target}" class="w-12 bg-transparent text-sm text-center text-white outline-none focus:text-primary-gold">
+                    <span class="text-xs text-gray-500 ml-1">회</span>
+                </div>
+            </div>
+        </div>
         <input type="hidden" class="item-is-counter" value="${isCounter}">
-        <button type="button" onclick="removeChecklistItem(this)" class="text-gray-500 hover:text-red-400 px-1 opacity-0 group-hover/row:opacity-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        <button type="button" onclick="removeChecklistItem(this)" class="text-gray-500 hover:text-red-400 p-2 opacity-0 group-hover/row:opacity-100 transition-opacity">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
     `;
     checklistContainer.appendChild(row);
     lucide.createIcons();
 }
 
-window.toggleItemMode = function (btn) {
-    const row = btn.closest('.checklist-row'), hidden = row.querySelector('.item-is-counter'), isCounter = hidden.value !== 'true';
+window.toggleItemMode = function (btn, forcedMode) {
+    const row = btn.closest('.checklist-row');
+    const hidden = row.querySelector('.item-is-counter');
+    const currentMode = hidden.value === 'true';
+
+    // If clicking the same button, do nothing
+    if (forcedMode === currentMode) return;
+
+    const isCounter = forcedMode;
     hidden.value = isCounter;
-    row.querySelector('.counter-input').classList.toggle('hidden', !isCounter);
-    btn.querySelector('i').setAttribute('data-lucide', isCounter ? 'hash' : 'check-square');
-    lucide.createIcons();
+
+    // Update Buttons UI
+    const btns = row.querySelectorAll('.mode-btn');
+    btns[0].className = `mode-btn p-1.5 rounded-md transition-all ${!isCounter ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}`;
+    btns[1].className = `mode-btn p-1.5 rounded-md transition-all ${isCounter ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}`;
+
+    // Update Counter Input Visibility
+    const counterContainer = row.querySelector('.counter-input-container');
+    counterContainer.classList.toggle('hidden', !isCounter);
+
     SoundManager.playClick();
 }
 
@@ -601,7 +632,13 @@ function saveProject() {
     checklistContainer.querySelectorAll('.checklist-row').forEach(row => {
         const text = row.querySelector('input[type="text"]').value.trim();
         const isCounter = row.querySelector('.item-is-counter').value === 'true';
-        if (text) checklist.push({ text, isCounter, target: isCounter ? parseInt(row.querySelector('input[type="number"]').value) || 1 : 1, current: 0, checked: false });
+        if (text) checklist.push({
+            text,
+            isCounter,
+            target: isCounter ? parseInt(row.querySelector('input[type="number"]').value) || 1 : 1,
+            current: 0,
+            checked: false
+        });
     });
     if (checklist.length === 0) { showToast('항목을 입력하세요.', 'error'); return; }
 
