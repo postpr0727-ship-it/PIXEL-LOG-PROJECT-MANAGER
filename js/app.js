@@ -550,128 +550,58 @@ function selectThumbnail(type, value, element) {
     }
 }
 
-async function uploadImageToStorage(file) {
-    const MAX_SIZE = 10 * 1024 * 1024; // 10MB limit for Firebase Storage
-
-    // Check file size
-    if (file.size > MAX_SIZE) {
-        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        showToast(`이미지 크기가 너무 큽니다!\n현재: ${fileSizeMB}MB / 최대: 10MB`, 'error');
-        throw new Error('File too large');
-    }
-
-    // Use Firebase Storage if available
-    if (storage && currentUser) {
-        try {
-            console.log('Uploading to Firebase Storage...');
-
-            // Create unique filename
-            const timestamp = Date.now();
-            const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-            const filename = `thumbnails/${currentUser.uid}/${timestamp}_${sanitizedFileName}`;
-            const storageRef = storage.ref(filename);
-
-            // Upload file
-            const uploadTask = storageRef.put(file);
-
-            return new Promise((resolve, reject) => {
-                uploadTask.on('state_changed',
-                    (snapshot) => {
-                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                        console.log('Upload progress:', progress.toFixed(0) + '%');
-                    },
-                    (error) => {
-                        console.error('Storage upload error:', error);
-                        reject(error);
-                    },
-                    async () => {
-                        try {
-                            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-                            console.log('Upload successful! URL:', downloadURL);
-                            resolve(downloadURL);
-                        } catch (error) {
-                            console.error('Failed to get download URL:', error);
-                            reject(error);
-                        }
-                    }
-                );
-            });
-        } catch (error) {
-            console.error('Storage upload failed:', error);
-            throw error;
-        }
-    } else {
-        // Fallback to base64 if not logged in
-        console.warn('Not logged in - cannot use Firebase Storage');
-        showToast('Firebase Storage를 사용하려면 로그인이 필요합니다.', 'warning');
-        throw new Error('Login required for Firebase Storage');
-    }
-}
-
-window.handleImageUpload = async function (input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-
-    console.log('File selected:', file.name, 'Size:', fileSizeMB + 'MB');
-
-    // Check if logged in
-    if (!storage || !currentUser) {
-        showToast('Firebase Storage를 사용하려면 로그인이 필요합니다.', 'warning');
-        input.value = '';
-        return;
-    }
-
-    // Check file size before upload
-    if (file.size > MAX_SIZE) {
-        console.log('File too large!', fileSizeMB, 'MB > 10MB');
-        showToast(`이미지 용량이 너무 큽니다!\n현재: ${fileSizeMB}MB / 최대: 10MB`, 'error');
-        input.value = '';
-        return;
-    }
-
-    // Show loading state
-    const uploadBtn = document.getElementById('upload-btn');
-
-    if (uploadBtn) {
-        uploadBtn.style.opacity = '0.5';
-        uploadBtn.style.pointerEvents = 'none';
-    }
-
-    showToast('Firebase Storage에 업로드 중...', 'success');
-
-    try {
-        const imageUrl = await uploadImageToStorage(file);
-        selectThumbnail('image', imageUrl, uploadBtn);
-        showToast('이미지 업로드 완료!', 'success');
-    } catch (error) {
-        console.error('Upload failed:', error);
-
-        // Check for specific errors
-        if (error.code === 'storage/unauthorized') {
-            showToast('Firebase Storage 권한이 없습니다.\nStorage 규칙을 설정해주세요.', 'error');
-        } else if (error.message?.includes('CORS')) {
-            showToast('CORS 에러가 발생했습니다.\nFirebase Storage 규칙을 확인해주세요.', 'error');
-        } else if (error.message !== 'File too large' && error.message !== 'Login required for Firebase Storage') {
-            showToast('이미지 업로드 실패', 'error');
-        }
-
-        input.value = '';
-    } finally {
-        if (uploadBtn) {
-            uploadBtn.style.opacity = '1';
-            uploadBtn.style.pointerEvents = 'auto';
-        }
-    }
-}
-
+// URL Input Handler with Preview
 window.handleUrlInput = function () {
-    const url = document.getElementById('img-url-input').value;
-    if (url) {
-        selectThumbnail('image', url, null);
+    const input = document.getElementById('img-url-input');
+    const url = input.value.trim();
+
+    if (!url) {
+        showToast('이미지 URL을 입력해주세요.', 'warning');
+        return;
     }
+
+    // Validate URL format
+    try {
+        new URL(url);
+    } catch (e) {
+        showToast('올바른 URL 형식이 아닙니다.', 'error');
+        return;
+    }
+
+    // Show preview
+    const previewContainer = document.getElementById('url-preview-container');
+    const previewImg = document.getElementById('url-preview-img');
+
+    if (previewImg && previewContainer) {
+        previewImg.src = url;
+        previewImg.onerror = () => {
+            showToast('이미지를 불러올 수 없습니다.\nURL을 확인해주세요.', 'error');
+            previewContainer.classList.add('hidden');
+        };
+        previewImg.onload = () => {
+            previewContainer.classList.remove('hidden');
+            selectThumbnail('image', url, null);
+            showToast('이미지 URL이 적용되었습니다!', 'success');
+            lucide.createIcons();
+        };
+    } else {
+        // Fallback if preview elements don't exist
+        selectThumbnail('image', url, null);
+        showToast('이미지 URL이 적용되었습니다!', 'success');
+    }
+}
+
+// Clear URL Preview
+window.clearUrlPreview = function () {
+    const input = document.getElementById('img-url-input');
+    const previewContainer = document.getElementById('url-preview-container');
+    const previewImg = document.getElementById('url-preview-img');
+
+    if (input) input.value = '';
+    if (previewImg) previewImg.src = '';
+    if (previewContainer) previewContainer.classList.add('hidden');
+
+    showToast('미리보기가 초기화되었습니다.', 'success');
 }
 
 function closeModal() { modal.classList.add('hidden'); }
@@ -943,7 +873,7 @@ async function saveToStorage() {
     } catch (error) {
         console.error('Save error:', error);
         if (error.code === 'resource-exhausted' || error.message?.includes('exceeds the maximum allowed size')) {
-            showToast('Firestore 데이터 크기 제한 초과 (1MB).\n\nFirebase Storage를 사용하면 용량 걱정 없습니다!\n이미지 업로드 시 Storage를 사용하세요.', 'error');
+            showToast('전체 프로젝트 데이터 크기 제한 초과 (1MB).\n\n해결 방법:\n1. 일부 프로젝트 삭제\n2. 그라디언트 사용 (용량 거의 없음)\n3. 이미지 URL 방식 사용 (용량 거의 없음)', 'error');
         } else if (error.name === 'QuotaExceededError') {
             showToast('저장 공간이 부족합니다.\n일부 프로젝트를 삭제해주세요.', 'error');
         } else {

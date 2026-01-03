@@ -352,41 +352,64 @@
                                 </a>
                             </div>
 
-                            <!-- Content: Custom -->
-                            <div id="thumb-content-custom" class="thumb-section hidden space-y-3">
-                                <div class="relative w-full h-40 border-2 border-dashed border-gray-500 flex flex-col items-center justify-center hover:border-primary-gold group cursor-pointer rounded-lg bg-navy-dark overflow-hidden"
-                                    id="upload-btn">
-                                    <div id="drag-hint"
-                                        class="absolute inset-x-0 top-2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none hidden">
-                                        <span
-                                            class="text-[10px] text-white font-bold bg-navy-dark/80 px-2 py-1 rounded-full border border-white/20">↔
-                                            위아래로 드래그하여 위치 조절</span>
+                            <!-- Content: Custom (URL Only) -->
+                            <div id="thumb-content-custom" class="thumb-section hidden">
+                                <!-- Image URL Input -->
+                                <div class="space-y-4">
+                                    <div class="text-center py-3">
+                                        <i data-lucide="link" class="w-8 h-8 text-primary-gold mx-auto mb-2"></i>
+                                        <h3 class="text-sm font-bold text-white mb-1">이미지 URL 입력</h3>
+                                        <p class="text-xs text-gray-400">외부 이미지 링크를 붙여넣으세요</p>
                                     </div>
-                                    <div id="upload-prompt"
-                                        class="flex flex-col items-center justify-center pointer-events-none">
-                                        <i data-lucide="image-plus"
-                                            class="w-6 h-6 text-gray-500 group-hover:text-primary-gold mb-1"></i>
-                                        <span class="text-xs text-gray-500 font-pj">Click to Upload Image</span>
-                                    </div>
-                                    <img id="uploaded-preview"
-                                        class="hidden thumbnail-preview absolute inset-0 object-cover w-full h-full opacity-60 select-none pointer-events-auto cursor-ns-resize z-0"
-                                        style="object-position: center 50%;">
-                                    <input type="file" id="thumb-file-input" accept="image/*"
-                                        class="absolute inset-0 opacity-0 cursor-pointer z-10"
-                                        onchange="handleImageUpload(this)">
-                                    <button type="button" id="change-thumb-btn"
-                                        onclick="document.getElementById('thumb-file-input').click()"
-                                        class="absolute bottom-2 right-2 bg-black/60 hover:bg-black/80 text-white text-[10px] px-2 py-1 rounded border border-white/20 hidden z-20 transition-all">이미지
-                                        변경</button>
-                                </div>
 
-                                <div>
-                                    <label class="text-xs text-gray-400 mb-1 block">Or Paste Image URL</label>
-                                    <div class="flex gap-2">
-                                        <input type="url" id="img-url-input" placeholder="https://..."
-                                            class="flex-1 bg-navy-dark border border-navy-muted rounded px-3 py-2 text-xs text-white focus:border-primary-gold outline-none">
+                                    <!-- URL Input -->
+                                    <div class="space-y-3">
+                                        <input type="url" id="img-url-input"
+                                            placeholder="https://images.unsplash.com/photo-..."
+                                            class="w-full bg-navy-dark border-2 border-navy-muted rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-primary-gold outline-none transition-colors">
+
                                         <button type="button" onclick="handleUrlInput()"
-                                            class="bg-navy-muted px-3 py-2 rounded text-xs hover:bg-navy-light text-white">Apply</button>
+                                            class="w-full bg-primary-gold hover:bg-yellow-500 text-navy-dark font-bold py-3 rounded-lg text-sm transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+                                            <i data-lucide="check" class="w-4 h-4 inline mr-1"></i>
+                                            적용하기
+                                        </button>
+                                    </div>
+
+                                    <!-- Preview Area -->
+                                    <div id="url-preview-container" class="hidden">
+                                        <div class="relative w-full h-32 rounded-lg overflow-hidden border-2 border-primary-gold">
+                                            <img id="url-preview-img" class="w-full h-full object-cover">
+                                            <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                                            <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                                                <span class="text-xs text-white font-bold">미리보기</span>
+                                                <button type="button" onclick="clearUrlPreview()"
+                                                    class="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded">
+                                                    <i data-lucide="x" class="w-3 h-3"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Helper Links -->
+                                    <div class="bg-navy-dark/50 border border-navy-muted rounded-lg p-3 space-y-2">
+                                        <p class="text-xs text-gray-400 font-semibold">추천 무료 이미지 사이트:</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            <a href="https://unsplash.com" target="_blank"
+                                                class="text-xs bg-navy-muted hover:bg-navy-light text-white px-3 py-1.5 rounded inline-flex items-center gap-1 transition-colors">
+                                                <i data-lucide="external-link" class="w-3 h-3"></i>
+                                                Unsplash
+                                            </a>
+                                            <a href="https://imgur.com" target="_blank"
+                                                class="text-xs bg-navy-muted hover:bg-navy-light text-white px-3 py-1.5 rounded inline-flex items-center gap-1 transition-colors">
+                                                <i data-lucide="external-link" class="w-3 h-3"></i>
+                                                Imgur
+                                            </a>
+                                            <a href="https://pexels.com" target="_blank"
+                                                class="text-xs bg-navy-muted hover:bg-navy-light text-white px-3 py-1.5 rounded inline-flex items-center gap-1 transition-colors">
+                                                <i data-lucide="external-link" class="w-3 h-3"></i>
+                                                Pexels
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
