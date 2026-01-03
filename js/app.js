@@ -325,17 +325,7 @@ function createCardElement(project, isCompleted) {
     // Determine progress visual state
     const progress = project.progress;
     let progressColor = 'bg-primary-gold'; // Default
-    let progressStateClass = '';
-
-    if (progress === 100) {
-        progressColor = 'bg-success';
-    } else if (progress >= 76) {
-        progressStateClass = 'progress-state-glow progress-state-particles';
-    } else if (progress >= 51) {
-        progressStateClass = 'progress-state-glow';
-    } else if (progress >= 26) {
-        progressStateClass = 'progress-state-pulse';
-    }
+    if (progress === 100) progressColor = 'bg-success'; // Finished
 
     // Generate Checklist HTML (limit to 2 lines preview or just summary)
     const completedCount = project.checklist.filter(i => i.checked).length;
@@ -385,7 +375,7 @@ function createCardElement(project, isCompleted) {
 
             <!-- Progress Bar -->
             <div class="relative w-full h-3 bg-navy-dark rounded-full overflow-hidden">
-                <div class="absolute top-0 left-0 h-full ${progressColor} ${progressStateClass} progress-fill shadow-[0_0_10px_rgba(245,197,66,0.5)]" 
+                <div class="absolute top-0 left-0 h-full ${progressColor} progress-fill shadow-[0_0_10px_rgba(245,197,66,0.5)]" 
                      style="width: ${progress}%"></div>
             </div>
         </div>
@@ -766,29 +756,19 @@ function createParticles() {
     const container = document.getElementById('particles');
     // Ensure container exists
     if (!container) return;
-    container.innerHTML = '';
-    const particleCount = 25;
-    const shapes = ['circle', 'square', 'triangle'];
+    const particleCount = 20;
 
     for (let i = 0; i < particleCount; i++) {
         const p = document.createElement('div');
-        const shape = shapes[Math.floor(Math.random() * shapes.length)];
-        p.className = `particle ${shape}`;
-
-        const size = Math.random() * 15 + 10;
+        p.className = 'particle';
+        const size = Math.random() * 20 + 5;
         p.style.width = `${size}px`;
         p.style.height = `${size}px`;
-
         p.style.left = `${Math.random() * 100}%`;
-        p.style.top = `${Math.random() * 100 + 100}%`; // Start below
-
-        const opacity = Math.random() * 0.3 + 0.1;
-        p.style.setProperty('--p-opacity', opacity);
-
-        const duration = Math.random() * 15 + 10;
-        p.style.animationDuration = `${duration}s`;
-        p.style.animationDelay = `${Math.random() * 10}s`;
-
+        p.style.top = `${Math.random() * 100}%`;
+        p.style.opacity = Math.random() * 0.3;
+        p.style.animationDuration = `${Math.random() * 10 + 5}s`;
+        p.style.animationDelay = `${Math.random() * 5}s`;
         container.appendChild(p);
     }
 }
