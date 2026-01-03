@@ -393,9 +393,18 @@ function calculateProgress(checklist) {
     let totalCurrent = 0, totalTarget = 0;
     checklist.forEach(item => {
         const target = item.target || 1;
+        const isCalendar = item.isCalendar || item.itemMode === 'calendar';
         
+        // Handle calendar items - based on whether they have any dates
+        if (isCalendar) {
+            const dates = item.dates || [];
+            if (dates.length > 0) {
+                totalCurrent += target * 0.5; // 기록이 있으면 진행중으로 50%
+            }
+            totalTarget += target;
+        }
         // Handle counter items
-        if (item.isCounter) {
+        else if (item.isCounter) {
             totalCurrent += item.current !== undefined ? item.current : 0;
             totalTarget += target;
         } else {
@@ -419,7 +428,14 @@ function getChecklistStats(checklist) {
     if (!checklist) return stats;
     
     checklist.forEach(item => {
-        if (item.isCounter) {
+        const isCalendar = item.isCalendar || item.itemMode === 'calendar';
+        
+        if (isCalendar) {
+            // Calendar items: in_progress if has dates
+            const dates = item.dates || [];
+            if (dates.length > 0) stats.in_progress++;
+            else stats.pending++;
+        } else if (item.isCounter) {
             // Counter items: completed if current >= target
             if (item.current >= item.target) stats.completed++;
             else if (item.current > 0) stats.in_progress++;
@@ -521,7 +537,10 @@ function openModal(editingId = null) {
             document.getElementById('startDate').value = p.startDate;
             document.getElementById('endDate').value = p.endDate;
             document.getElementById('description').value = p.description;
-            p.checklist.forEach(item => addChecklistItem(item.text, item.target, item.isCounter));
+            p.checklist.forEach(item => {
+                const mode = item.itemMode || (item.isCalendar ? 'calendar' : (item.isCounter ? 'counter' : 'checkbox'));
+                addChecklistItem(item.text, item.target, mode);
+            });
 
             if (p.thumbType) {
                 const pos = p.thumbPosition !== undefined ? p.thumbPosition : 50;
@@ -729,16 +748,24 @@ window.clearUrlPreview = function () {
 
 function closeModal() { modal.classList.add('hidden'); }
 
-function addChecklistItem(text = '', target = 1, isCounter = false) {
+function addChecklistItem(text = '', target = 1, itemMode = 'checkbox') {
+    // itemMode: 'checkbox', 'counter', 'calendar'
+    const isCounter = itemMode === 'counter';
+    const isCalendar = itemMode === 'calendar';
+    const isCheckbox = itemMode === 'checkbox';
+    
     const row = document.createElement('div');
     row.className = 'flex gap-2 checklist-row items-center py-2 group/row border-b border-navy-muted/30 last:border-0';
     row.innerHTML = `
         <div class="flex flex-col gap-1 items-center bg-navy-dark/50 p-1 rounded-lg border border-navy-muted">
-            <button type="button" onclick="toggleItemMode(this, false)" class="mode-btn p-1.5 rounded-md transition-all ${!isCounter ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}" title="일반 체크박스">
+            <button type="button" onclick="setItemMode(this, 'checkbox')" class="mode-btn p-1.5 rounded-md transition-all ${isCheckbox ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}" title="일반 체크박스">
                 <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
             </button>
-            <button type="button" onclick="toggleItemMode(this, true)" class="mode-btn p-1.5 rounded-md transition-all ${isCounter ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}" title="회차 카운터">
+            <button type="button" onclick="setItemMode(this, 'counter')" class="mode-btn p-1.5 rounded-md transition-all ${isCounter ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}" title="회차 카운터">
                 <i data-lucide="hash" class="w-3.5 h-3.5"></i>
+            </button>
+            <button type="button" onclick="setItemMode(this, 'calendar')" class="mode-btn p-1.5 rounded-md transition-all ${isCalendar ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}" title="달력 기록">
+                <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
             </button>
         </div>
         <div class="flex-1 flex flex-col gap-2">
@@ -749,9 +776,13 @@ function addChecklistItem(text = '', target = 1, isCounter = false) {
                     <input type="number" min="1" value="${target}" class="w-12 bg-transparent text-sm text-center text-white outline-none focus:text-primary-gold">
                     <span class="text-xs text-gray-500 ml-1">회</span>
                 </div>
+                <div class="calendar-hint ${isCalendar ? '' : 'hidden'} flex items-center text-xs text-blue-400">
+                    <i data-lucide="info" class="w-3 h-3 mr-1"></i>
+                    달력에서 날짜를 클릭하여 기록
+                </div>
             </div>
         </div>
-        <input type="hidden" class="item-is-counter" value="${isCounter}">
+        <input type="hidden" class="item-mode" value="${itemMode}">
         <button type="button" onclick="removeChecklistItem(this)" class="text-gray-500 hover:text-red-400 p-2 opacity-0 group-hover/row:opacity-100 transition-opacity">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
         </button>
@@ -760,25 +791,30 @@ function addChecklistItem(text = '', target = 1, isCounter = false) {
     lucide.createIcons();
 }
 
-window.toggleItemMode = function (btn, forcedMode) {
+window.setItemMode = function (btn, newMode) {
     const row = btn.closest('.checklist-row');
-    const hidden = row.querySelector('.item-is-counter');
-    const currentMode = hidden.value === 'true';
+    const hidden = row.querySelector('.item-mode');
+    const currentMode = hidden.value;
 
     // If clicking the same button, do nothing
-    if (forcedMode === currentMode) return;
+    if (newMode === currentMode) return;
 
-    const isCounter = forcedMode;
-    hidden.value = isCounter;
+    hidden.value = newMode;
+    const isCounter = newMode === 'counter';
+    const isCalendar = newMode === 'calendar';
 
     // Update Buttons UI
     const btns = row.querySelectorAll('.mode-btn');
-    btns[0].className = `mode-btn p-1.5 rounded-md transition-all ${!isCounter ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}`;
+    const isCheckbox = newMode === 'checkbox';
+    btns[0].className = `mode-btn p-1.5 rounded-md transition-all ${isCheckbox ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}`;
     btns[1].className = `mode-btn p-1.5 rounded-md transition-all ${isCounter ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}`;
+    btns[2].className = `mode-btn p-1.5 rounded-md transition-all ${isCalendar ? 'bg-primary-gold text-navy-dark' : 'text-gray-500 hover:text-gray-300'}`;
 
-    // Update Counter Input Visibility
+    // Update Input Visibility
     const counterContainer = row.querySelector('.counter-input-container');
+    const calendarHint = row.querySelector('.calendar-hint');
     counterContainer.classList.toggle('hidden', !isCounter);
+    calendarHint.classList.toggle('hidden', !isCalendar);
 
     SoundManager.playClick();
 }
@@ -794,13 +830,19 @@ async function saveProject() {
     const checklist = [];
     checklistContainer.querySelectorAll('.checklist-row').forEach(row => {
         const text = row.querySelector('input[type="text"]').value.trim();
-        const isCounter = row.querySelector('.item-is-counter').value === 'true';
+        const itemMode = row.querySelector('.item-mode').value;
+        const isCounter = itemMode === 'counter';
+        const isCalendar = itemMode === 'calendar';
         if (text) checklist.push({
             text,
             isCounter,
+            isCalendar,
+            itemMode,
             target: isCounter ? parseInt(row.querySelector('input[type="number"]').value) || 1 : 1,
             current: 0,
-            checked: false
+            checked: false,
+            status: 'pending',
+            dates: [] // 달력 모드용 날짜 기록 배열
         });
     });
     if (checklist.length === 0) { showToast('항목을 입력하세요.', 'error'); return; }
@@ -884,7 +926,9 @@ function showDetailModal(project) {
         target: i.target || 1, 
         current: i.current !== undefined ? i.current : (i.checked ? i.target : 0), 
         isCounter: i.isCounter !== undefined ? i.isCounter : (i.target > 1),
-        status: i.status || (i.checked ? 'completed' : 'pending')
+        isCalendar: i.isCalendar || i.itemMode === 'calendar',
+        status: i.status || (i.checked ? 'completed' : 'pending'),
+        dates: i.dates || []
     }));
     
     const stats = getChecklistStats(project.checklist);
@@ -904,6 +948,38 @@ function showDetailModal(project) {
                 <span class="text-xs font-bold">${config.label}</span>
             </button>
         `;
+    };
+    
+    const getCalendarUI = (item, idx) => {
+        const dates = item.dates || [];
+        const thisMonth = new Date();
+        const monthCount = dates.filter(d => {
+            const date = new Date(d);
+            return date.getMonth() === thisMonth.getMonth() && date.getFullYear() === thisMonth.getFullYear();
+        }).length;
+        
+        return `
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-blue-400 font-bold">이번달 ${monthCount}회</span>
+                <button onclick="openCalendarModal('${project.id}', ${idx})" 
+                    class="flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all">
+                    <i data-lucide="calendar" class="w-4 h-4"></i>
+                    <span class="text-xs font-bold">달력</span>
+                </button>
+            </div>
+        `;
+    };
+    
+    const getItemUI = (item, idx) => {
+        if (item.isCalendar) return getCalendarUI(item, idx);
+        if (item.isCounter) return `
+            <div class="flex items-center gap-3 bg-navy-light p-1 rounded-full border border-navy-muted">
+                <button onclick="updateItemProgress('${project.id}', ${idx}, -1)" class="w-8 h-8 rounded-full bg-navy-dark text-primary-gold flex items-center justify-center font-bold disabled:opacity-30"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                <div class="flex flex-col items-center min-w-[50px]"><span class="text-white font-mono text-xs font-bold">${item.current}/${item.target}</span><div class="w-full h-1 bg-navy-muted rounded-full overflow-hidden mt-1"><div class="h-full bg-primary-gold transition-all" style="width:${(item.current / item.target) * 100}%"></div></div></div>
+                <button onclick="updateItemProgress('${project.id}', ${idx}, 1)" class="w-8 h-8 rounded-full bg-navy-dark text-primary-gold flex items-center justify-center font-bold disabled:opacity-30"><i data-lucide="plus" class="w-4 h-4"></i></button>
+            </div>
+        `;
+        return getStatusUI(item, idx);
     };
     
     const html = `
@@ -936,13 +1012,7 @@ function showDetailModal(project) {
                         ${safeChecklist.map((item, idx) => `
                             <div class="flex items-center justify-between p-4 rounded-xl bg-navy-dark border border-navy-muted gap-3">
                                 <span class="${item.status === 'completed' ? 'text-gray-500 line-through' : item.status === 'in_progress' ? 'text-blue-300' : 'text-gray-200'} flex-1 text-sm font-medium">${item.text}</span>
-                                ${item.isCounter ? `
-                                    <div class="flex items-center gap-3 bg-navy-light p-1 rounded-full border border-navy-muted">
-                                        <button onclick="updateItemProgress('${project.id}', ${idx}, -1)" class="w-8 h-8 rounded-full bg-navy-dark text-primary-gold flex items-center justify-center font-bold disabled:opacity-30"><i data-lucide="minus" class="w-4 h-4"></i></button>
-                                        <div class="flex flex-col items-center min-w-[50px]"><span class="text-white font-mono text-xs font-bold">${item.current}/${item.target}</span><div class="w-full h-1 bg-navy-muted rounded-full overflow-hidden mt-1"><div class="h-full bg-primary-gold transition-all" style="width:${(item.current / item.target) * 100}%"></div></div></div>
-                                        <button onclick="updateItemProgress('${project.id}', ${idx}, 1)" class="w-8 h-8 rounded-full bg-navy-dark text-primary-gold flex items-center justify-center font-bold disabled:opacity-30"><i data-lucide="plus" class="w-4 h-4"></i></button>
-                                    </div>
-                                ` : getStatusUI(item, idx)}
+                                ${getItemUI(item, idx)}
                             </div>
                         `).join('')}
                     </div>
@@ -953,6 +1023,180 @@ function showDetailModal(project) {
     `;
     document.body.insertAdjacentHTML('beforeend', html);
     lucide.createIcons();
+}
+
+// Calendar Modal for date tracking
+let calendarState = { projectId: null, itemIdx: null, currentMonth: new Date() };
+
+window.openCalendarModal = function(projectId, itemIdx) {
+    calendarState = { projectId, itemIdx, currentMonth: new Date() };
+    renderCalendarModal();
+}
+
+function renderCalendarModal() {
+    const { projectId, itemIdx, currentMonth } = calendarState;
+    const project = projects.find(p => p.id === projectId);
+    const item = project.checklist[itemIdx];
+    const dates = item.dates || [];
+    
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+    
+    // Get first day and total days of month
+    const firstDay = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    // Count this month's records
+    const monthDates = dates.filter(d => {
+        const date = new Date(d);
+        return date.getMonth() === month && date.getFullYear() === year;
+    });
+    
+    // Generate calendar grid
+    let calendarHTML = '';
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    
+    // Day headers
+    calendarHTML += '<div class="grid grid-cols-7 gap-1 mb-2">';
+    dayNames.forEach((day, i) => {
+        const color = i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400';
+        calendarHTML += `<div class="text-center text-xs font-bold ${color} py-1">${day}</div>`;
+    });
+    calendarHTML += '</div>';
+    
+    // Calendar days
+    calendarHTML += '<div class="grid grid-cols-7 gap-1">';
+    
+    // Empty cells before first day
+    for (let i = 0; i < firstDay; i++) {
+        calendarHTML += '<div></div>';
+    }
+    
+    // Days
+    for (let day = 1; day <= totalDays; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isMarked = dates.includes(dateStr);
+        const isToday = dateStr === todayStr;
+        const isFuture = new Date(dateStr) > today;
+        const dayOfWeek = new Date(year, month, day).getDay();
+        const isSunday = dayOfWeek === 0;
+        const isSaturday = dayOfWeek === 6;
+        
+        let classes = 'w-full aspect-square rounded-lg flex items-center justify-center text-sm font-medium transition-all cursor-pointer ';
+        if (isFuture) {
+            classes += 'text-gray-600 cursor-not-allowed';
+        } else if (isMarked) {
+            classes += 'bg-success text-white shadow-lg shadow-success/30';
+        } else if (isToday) {
+            classes += 'bg-primary-gold/20 text-primary-gold border border-primary-gold';
+        } else if (isSunday) {
+            classes += 'text-red-400 hover:bg-red-500/20';
+        } else if (isSaturday) {
+            classes += 'text-blue-400 hover:bg-blue-500/20';
+        } else {
+            classes += 'text-gray-300 hover:bg-navy-muted';
+        }
+        
+        calendarHTML += `<button ${isFuture ? 'disabled' : ''} onclick="toggleCalendarDate('${dateStr}')" class="${classes}">${day}</button>`;
+    }
+    calendarHTML += '</div>';
+    
+    // Remove existing calendar modal
+    const existing = document.getElementById('calendar-modal');
+    if (existing) existing.remove();
+    
+    const html = `
+        <div id="calendar-modal" class="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 backdrop-blur-sm" onclick="this.remove()">
+            <div class="bg-navy-light w-full max-w-md rounded-xl border border-navy-muted overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+                <!-- Header -->
+                <div class="p-4 border-b border-navy-muted">
+                    <div class="flex items-center justify-between mb-2">
+                        <button onclick="changeCalendarMonth(-1)" class="p-2 rounded-lg hover:bg-navy-muted text-gray-400 hover:text-white transition-colors">
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                        </button>
+                        <h3 class="text-lg font-bold text-white">${year}년 ${monthNames[month]}</h3>
+                        <button onclick="changeCalendarMonth(1)" class="p-2 rounded-lg hover:bg-navy-muted text-gray-400 hover:text-white transition-colors">
+                            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <p class="text-center text-sm text-gray-400">${item.text}</p>
+                </div>
+                
+                <!-- Calendar -->
+                <div class="p-4">
+                    ${calendarHTML}
+                </div>
+                
+                <!-- Stats -->
+                <div class="p-4 bg-navy-dark border-t border-navy-muted">
+                    <div class="flex items-center justify-between">
+                        <div class="text-center">
+                            <p class="text-2xl font-black text-success">${monthDates.length}</p>
+                            <p class="text-xs text-gray-500">이번달</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-2xl font-black text-primary-gold">${dates.length}</p>
+                            <p class="text-xs text-gray-500">전체</p>
+                        </div>
+                        <button onclick="document.getElementById('calendar-modal').remove()" 
+                            class="px-4 py-2 bg-primary-gold text-navy-dark font-bold rounded-lg hover:bg-yellow-400 transition-colors">
+                            완료
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', html);
+    lucide.createIcons();
+}
+
+window.changeCalendarMonth = function(delta) {
+    calendarState.currentMonth.setMonth(calendarState.currentMonth.getMonth() + delta);
+    renderCalendarModal();
+}
+
+window.toggleCalendarDate = async function(dateStr) {
+    const { projectId, itemIdx } = calendarState;
+    const project = projects.find(p => p.id === projectId);
+    const item = project.checklist[itemIdx];
+    
+    if (!item.dates) item.dates = [];
+    
+    const index = item.dates.indexOf(dateStr);
+    if (index > -1) {
+        item.dates.splice(index, 1);
+        SoundManager.playClick();
+    } else {
+        item.dates.push(dateStr);
+        item.dates.sort();
+        SoundManager.playSuccess();
+    }
+    
+    // Update status based on dates count
+    if (item.dates.length > 0) {
+        item.status = 'in_progress';
+        item.current = item.dates.length;
+    } else {
+        item.status = 'pending';
+        item.current = 0;
+    }
+    
+    project.progress = calculateProgress(project.checklist);
+    await saveToStorage();
+    renderProjects();
+    renderCalendarModal();
+    
+    // Update detail modal if open
+    const detailBackdrop = document.getElementById('detail-backdrop');
+    if (detailBackdrop) {
+        detailBackdrop.remove();
+        showDetailModal(project);
+    }
 }
 
 // Cycle through status: pending -> in_progress -> completed -> pending
