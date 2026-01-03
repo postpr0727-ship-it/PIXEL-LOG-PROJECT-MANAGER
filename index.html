@@ -72,9 +72,9 @@
     <!-- Hero Section -->
     <header class="relative h-[60vh] flex items-center justify-center overflow-hidden bg-navy-dark">
         <!-- Background Video -->
-        <video autoplay muted loop playsinline preload="auto"
-            class="absolute inset-0 w-full h-full object-cover z-0 opacity-60" poster="assets/logo_1.png"
-            onerror="this.style.display='none'">
+        <video id="hero-video" autoplay muted loop playsinline preload="auto"
+            class="absolute inset-0 w-full h-full object-cover z-0 opacity-0 transition-opacity duration-700"
+            poster="assets/logo_1.png" onerror="this.style.display='none'">
             <source src="assets/hero-bg.mp4" type="video/mp4">
         </video>
 
