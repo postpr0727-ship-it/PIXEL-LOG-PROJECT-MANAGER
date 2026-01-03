@@ -901,9 +901,9 @@ async function saveToStorage() {
     } catch (error) {
         console.error('Save error:', error);
         if (error.code === 'resource-exhausted' || error.message?.includes('exceeds the maximum allowed size')) {
-            showToast('프로젝트 데이터가 너무 큽니다. 이미지를 Firebase Storage에 업로드해주세요.', 'error');
+            showToast('전체 프로젝트 데이터가 너무 큽니다 (1MB 초과).\n\n해결 방법:\n1. 기존 프로젝트의 업로드한 이미지를 삭제\n2. 또는 이미지 URL 방식 사용\n3. 일부 프로젝트 삭제', 'error');
         } else if (error.name === 'QuotaExceededError') {
-            showToast('저장 공간이 부족합니다. 일부 프로젝트를 삭제해주세요.', 'error');
+            showToast('저장 공간이 부족합니다.\n일부 프로젝트를 삭제해주세요.', 'error');
         } else {
             showToast('저장 중 오류가 발생했습니다.', 'error');
         }
