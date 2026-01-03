@@ -427,12 +427,16 @@ function openModal(editingId = null) {
     checklistContainer.innerHTML = '';
     document.getElementById('editing-id').value = '';
     document.getElementById('modal-title').innerText = '새 프로젝트 생성';
+    const submitBtn = document.getElementById('submit-btn');
+    if (submitBtn) submitBtn.innerText = '생성하기';
     setThumbTab('gradient');
 
     if (editingId) {
         const p = projects.find(pro => pro.id === editingId);
         if (p) {
             document.getElementById('modal-title').innerText = '프로젝트 수정';
+            const submitBtn = document.getElementById('submit-btn');
+            if (submitBtn) submitBtn.innerText = '수정 완료';
             document.getElementById('editing-id').value = p.id;
             document.getElementById('title').value = p.title;
             document.getElementById('category').value = p.category;
