@@ -89,6 +89,16 @@ const CATEGORY_COLORS = {
     work: 'bg-category-work',
     hobby: 'bg-category-hobby',
     study: 'bg-category-study',
+    certificate: 'bg-category-certificate',
+    language: 'bg-category-language',
+    health: 'bg-category-health',
+    finance: 'bg-category-finance',
+    coding: 'bg-category-coding',
+    reading: 'bg-category-reading',
+    travel: 'bg-category-travel',
+    diet: 'bg-category-diet',
+    habit: 'bg-category-habit',
+    side: 'bg-category-side',
     custom: 'bg-gray-500'
 };
 
@@ -98,6 +108,16 @@ const CATEGORY_LABELS = {
     work: '업무 💼',
     hobby: '취미 🎨',
     study: '학습 🎓',
+    certificate: '자격증 📜',
+    language: '외국어 🌍',
+    health: '건강관리 🏥',
+    finance: '재테크 💰',
+    coding: '코딩 💻',
+    reading: '독서 📖',
+    travel: '여행 ✈️',
+    diet: '다이어트 🥗',
+    habit: '습관형성 ⏰',
+    side: '사이드프로젝트 🚀',
     custom: '직접지정 ⭐'
 };
 

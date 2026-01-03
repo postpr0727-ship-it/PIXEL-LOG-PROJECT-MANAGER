@@ -9,6 +9,23 @@
     --border-color: #1f2937;
     --primary-gold: #f5c542;
     --success: #10b981;
+    
+    /* Category Colors */
+    --cat-fitness: #ef4444;
+    --cat-growth: #8b5cf6;
+    --cat-work: #3b82f6;
+    --cat-hobby: #ec4899;
+    --cat-study: #6366f1;
+    --cat-certificate: #f59e0b;
+    --cat-language: #14b8a6;
+    --cat-health: #22c55e;
+    --cat-finance: #eab308;
+    --cat-coding: #06b6d4;
+    --cat-reading: #a855f7;
+    --cat-travel: #0ea5e9;
+    --cat-diet: #84cc16;
+    --cat-habit: #f97316;
+    --cat-side: #e11d48;
 }
 
 /* Date Picker Icon Visibility */
@@ -244,4 +261,37 @@ body {
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+/* Category Color Classes */
+.bg-category-fitness { background-color: var(--cat-fitness); }
+.bg-category-growth { background-color: var(--cat-growth); }
+.bg-category-work { background-color: var(--cat-work); }
+.bg-category-hobby { background-color: var(--cat-hobby); }
+.bg-category-study { background-color: var(--cat-study); }
+.bg-category-certificate { background-color: var(--cat-certificate); }
+.bg-category-language { background-color: var(--cat-language); }
+.bg-category-health { background-color: var(--cat-health); }
+.bg-category-finance { background-color: var(--cat-finance); }
+.bg-category-coding { background-color: var(--cat-coding); }
+.bg-category-reading { background-color: var(--cat-reading); }
+.bg-category-travel { background-color: var(--cat-travel); }
+.bg-category-diet { background-color: var(--cat-diet); }
+.bg-category-habit { background-color: var(--cat-habit); }
+.bg-category-side { background-color: var(--cat-side); }
+
+/* Select optgroup styling */
+select optgroup {
+    background-color: var(--bg-card);
+    color: var(--text-muted);
+    font-weight: bold;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+select option {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    padding: 8px;
 }
