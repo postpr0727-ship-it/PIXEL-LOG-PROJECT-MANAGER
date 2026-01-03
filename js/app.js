@@ -385,6 +385,10 @@ function initThumbnailDragger() {
         if (!preview.classList.contains('hidden')) {
             isDraggingThumb = true;
             startY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+            // Prevent default browser dragging behavior
+            if (e.cancelable) e.preventDefault();
+
             const style = window.getComputedStyle(preview);
             const pos = style.objectPosition.split(' ')[1];
             currentPos = parseFloat(pos) || 50;
@@ -512,14 +516,28 @@ function selectThumbnail(type, value, element) {
     if (type === 'image') {
         const preview = document.getElementById('uploaded-preview');
         const dragHint = document.getElementById('drag-hint');
+        const uploadPrompt = document.getElementById('upload-prompt');
+        const changeBtn = document.getElementById('change-thumb-btn');
+        const fileInput = document.getElementById('thumb-file-input');
+
         if (preview && preview.src !== value) {
             preview.src = value;
             preview.classList.remove('hidden');
             if (dragHint) dragHint.classList.remove('hidden');
+            if (uploadPrompt) uploadPrompt.classList.add('hidden');
+            if (changeBtn) changeBtn.classList.remove('hidden');
+            if (fileInput) fileInput.classList.add('hidden');
         }
     } else {
         const dragHint = document.getElementById('drag-hint');
+        const uploadPrompt = document.getElementById('upload-prompt');
+        const changeBtn = document.getElementById('change-thumb-btn');
+        const fileInput = document.getElementById('thumb-file-input');
+
         if (dragHint) dragHint.classList.add('hidden');
+        if (uploadPrompt) uploadPrompt.classList.remove('hidden');
+        if (changeBtn) changeBtn.classList.add('hidden');
+        if (fileInput) fileInput.classList.remove('hidden');
     }
 }
 

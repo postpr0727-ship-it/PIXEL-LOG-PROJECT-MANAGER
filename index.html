@@ -359,126 +359,135 @@
                                 <div class="relative w-full h-40 border-2 border-dashed border-gray-500 flex flex-col items-center justify-center hover:border-primary-gold group cursor-pointer rounded-lg bg-navy-dark overflow-hidden"
                                     id="upload-btn">
                                     <div id="drag-hint"
-                                        class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none hidden">
+                                        class="absolute inset-x-0 top-2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none hidden">
                                         <span
                                             class="text-[10px] text-white font-bold bg-navy-dark/80 px-2 py-1 rounded-full border border-white/20">↔
                                             위아래로 드래그하여 위치 조절</span>
                                     </div>
-                                    <i data-lucide="image-plus"
-                                        class="w-6 h-6 text-gray-500 group-hover:text-primary-gold mb-1"></i>
-                                    <span class="text-xs text-gray-500">Click to Upload Image</span>
+                                    <div id="upload-prompt"
+                                        class="flex flex-col items-center justify-center pointer-events-none">
+                                        <i data-lucide="image-plus"
+                                            class="w-6 h-6 text-gray-500 group-hover:text-primary-gold mb-1"></i>
+                                        <span class="text-xs text-gray-500 font-pj">Click to Upload Image</span>
+                                    </div>
                                     <img id="uploaded-preview"
-                                        class="hidden thumbnail-preview absolute inset-0 object-cover w-full h-full opacity-60 select-none pointer-events-auto cursor-ns-resize"
+                                        class="hidden thumbnail-preview absolute inset-0 object-cover w-full h-full opacity-60 select-none pointer-events-auto cursor-ns-resize z-0"
                                         style="object-position: center 50%;">
                                     <input type="file" id="thumb-file-input" accept="image/*"
-                                        class="absolute inset-0 opacity-0 cursor-pointer z-20"
+                                        class="absolute inset-0 opacity-0 cursor-pointer z-10"
                                         onchange="handleImageUpload(this)">
-                                </div>
-
-                                <!-- URL Input -->
-                                <div>
-                                    <label class="text-xs text-gray-400 mb-1 block">Or Paste Image URL</label>
-                                    <div class="flex gap-2">
-                                        <input type="url" id="img-url-input" placeholder="https://..."
-                                            class="flex-1 bg-navy-dark border border-navy-muted rounded px-3 py-2 text-xs text-white focus:border-primary-gold outline-none">
-                                        <button type="button" onclick="handleUrlInput()"
-                                            class="bg-navy-muted px-3 py-2 rounded text-xs hover:bg-navy-light text-white">Apply</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <input type="hidden" id="selected-thumb-type" value="gradient">
-                            <input type="hidden" id="selected-thumb-value"
-                                value="bg-gradient-to-br from-purple-500 to-indigo-500">
-                            <input type="hidden" id="selected-thumb-pos" value="50">
-                        </div>
-
-                        <!-- Title & Category -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="title" class="block text-sm font-medium text-gray-300 mb-1">프로젝트명 <span
-                                        class="text-primary-gold">*</span></label>
-                                <input type="text" id="title" required
-                                    class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold focus:ring-1 focus:ring-primary-gold transition-colors"
-                                    placeholder="예: 30일 복근 챌린지">
-                            </div>
-                            <div>
-                                <label for="category" class="block text-sm font-medium text-gray-300 mb-1">카테고리</label>
-                                <select id="category"
-                                    class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold focus:ring-1 focus:ring-primary-gold">
-                                    <option value="fitness">운동 💪</option>
-                                    <option value="growth">자기계발 📚</option>
-                                    <option value="work">업무 💼</option>
-                                    <option value="hobby">취미 🎨</option>
-                                    <option value="study">학습 🎓</option>
-                                    <option value="custom">직접지정 ⭐</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Dates -->
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label for="startDate" class="block text-sm font-medium text-gray-300 mb-1">시작일</label>
-                                <input type="date" id="startDate" required
-                                    class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold">
-                            </div>
-                            <div>
-                                <label for="endDate" class="block text-sm font-medium text-gray-300 mb-1">종료일</label>
-                                <input type="date" id="endDate" required
-                                    class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold">
-                            </div>
-                        </div>
-
-                        <!-- Description -->
-                        <div>
-                            <label for="description" class="block text-sm font-medium text-gray-300 mb-1">설명
-                                (선택)</label>
-                            <textarea id="description" rows="3"
-                                class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold resize-none"
-                                placeholder="어떤 목표를 달성하고 싶으신가요?"></textarea>
-                        </div>
-
-                        <!-- Checklist -->
-                        <div>
-                            <div class="flex justify-between items-center mb-2">
-                                <label class="block text-sm font-medium text-gray-300">체크리스트</label>
-                                <button type="button" onclick="addChecklistItem()"
-                                    class="text-xs text-primary-gold hover:underline flex items-center gap-1">
-                                    <i data-lucide="plus" class="w-3 h-3"></i> 항목 추가
-                                </button>
-                            </div>
-                            <div id="checklist-container" class="space-y-2">
-                                <!-- Dynamic Items -->
-                                <div class="flex gap-2 checklist-row">
-                                    <input type="text"
-                                        class="flex-1 bg-navy-dark border border-navy-muted rounded px-3 py-2 text-sm text-white focus:border-primary-gold outline-none"
-                                        placeholder="할 일 입력" required>
-                                    <button type="button" onclick="removeChecklistItem(this)"
-                                        class="text-gray-500 hover:text-red-400 px-1">
-                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    <button type="button" id="change-thumb-btn"
+                                        onclick="document.getElementById('thumb-file-input').click()"
+                                        class="absolute bottom-2 right-2 bg-black/60 hover:bg-black/80 text-white text-[10px] px-2 py-1 rounded border border-white/20 hidden z-20 transition-all">
+                                        이미지 변경
                                     </button>
                                 </div>
                             </div>
+
+                            <!-- URL Input -->
+                            <div>
+                                <label class="text-xs text-gray-400 mb-1 block">Or Paste Image URL</label>
+                                <div class="flex gap-2">
+                                    <input type="url" id="img-url-input" placeholder="https://..."
+                                        class="flex-1 bg-navy-dark border border-navy-muted rounded px-3 py-2 text-xs text-white focus:border-primary-gold outline-none">
+                                    <button type="button" onclick="handleUrlInput()"
+                                        class="bg-navy-muted px-3 py-2 rounded text-xs hover:bg-navy-light text-white">Apply</button>
+                                </div>
+                            </div>
                         </div>
 
-                    </form>
+                        <input type="hidden" id="selected-thumb-type" value="gradient">
+                        <input type="hidden" id="selected-thumb-value"
+                            value="bg-gradient-to-br from-purple-500 to-indigo-500">
+                        <input type="hidden" id="selected-thumb-pos" value="50">
                 </div>
 
-                <!-- Footer -->
-                <div
-                    class="bg-primary-navy px-6 py-4 border-t border-navy-muted flex justify-end gap-3 sm:flex-row-reverse">
-                    <button type="button" onclick="saveProject()"
-                        class="w-full sm:w-auto inline-flex justify-center rounded-lg bg-primary-gold px-6 py-2.5 text-sm font-semibold text-navy-dark shadow-sm hover:bg-gold-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-gold transition-colors">
-                        생성하기
-                    </button>
-                    <button type="button" onclick="closeModal()"
-                        class="mt-3 sm:mt-0 w-full sm:w-auto inline-flex justify-center rounded-lg bg-transparent border border-navy-muted px-6 py-2.5 text-sm font-semibold text-gray-300 shadow-sm hover:bg-navy-muted transition-colors">
-                        취소
-                    </button>
+                <!-- Title & Category -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="title" class="block text-sm font-medium text-gray-300 mb-1">프로젝트명 <span
+                                class="text-primary-gold">*</span></label>
+                        <input type="text" id="title" required
+                            class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold focus:ring-1 focus:ring-primary-gold transition-colors"
+                            placeholder="예: 30일 복근 챌린지">
+                    </div>
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-300 mb-1">카테고리</label>
+                        <select id="category"
+                            class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold focus:ring-1 focus:ring-primary-gold">
+                            <option value="fitness">운동 💪</option>
+                            <option value="growth">자기계발 📚</option>
+                            <option value="work">업무 💼</option>
+                            <option value="hobby">취미 🎨</option>
+                            <option value="study">학습 🎓</option>
+                            <option value="custom">직접지정 ⭐</option>
+                        </select>
+                    </div>
                 </div>
+
+                <!-- Dates -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="startDate" class="block text-sm font-medium text-gray-300 mb-1">시작일</label>
+                        <input type="date" id="startDate" required
+                            class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold">
+                    </div>
+                    <div>
+                        <label for="endDate" class="block text-sm font-medium text-gray-300 mb-1">종료일</label>
+                        <input type="date" id="endDate" required
+                            class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold">
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-300 mb-1">설명
+                        (선택)</label>
+                    <textarea id="description" rows="3"
+                        class="w-full bg-navy-dark border border-navy-muted rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold resize-none"
+                        placeholder="어떤 목표를 달성하고 싶으신가요?"></textarea>
+                </div>
+
+                <!-- Checklist -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-medium text-gray-300">체크리스트</label>
+                        <button type="button" onclick="addChecklistItem()"
+                            class="text-xs text-primary-gold hover:underline flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3 h-3"></i> 항목 추가
+                        </button>
+                    </div>
+                    <div id="checklist-container" class="space-y-2">
+                        <!-- Dynamic Items -->
+                        <div class="flex gap-2 checklist-row">
+                            <input type="text"
+                                class="flex-1 bg-navy-dark border border-navy-muted rounded px-3 py-2 text-sm text-white focus:border-primary-gold outline-none"
+                                placeholder="할 일 입력" required>
+                            <button type="button" onclick="removeChecklistItem(this)"
+                                class="text-gray-500 hover:text-red-400 px-1">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                </form>
+            </div>
+
+            <!-- Footer -->
+            <div
+                class="bg-primary-navy px-6 py-4 border-t border-navy-muted flex justify-end gap-3 sm:flex-row-reverse">
+                <button type="button" onclick="saveProject()"
+                    class="w-full sm:w-auto inline-flex justify-center rounded-lg bg-primary-gold px-6 py-2.5 text-sm font-semibold text-navy-dark shadow-sm hover:bg-gold-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-gold transition-colors">
+                    생성하기
+                </button>
+                <button type="button" onclick="closeModal()"
+                    class="mt-3 sm:mt-0 w-full sm:w-auto inline-flex justify-center rounded-lg bg-transparent border border-navy-muted px-6 py-2.5 text-sm font-semibold text-gray-300 shadow-sm hover:bg-navy-muted transition-colors">
+                    취소
+                </button>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- Scripts -->
