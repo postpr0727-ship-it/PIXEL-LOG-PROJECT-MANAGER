@@ -336,16 +336,16 @@ function createCardElement(project, isCompleted) {
     return div;
 }
 
-function deleteProject(id) {
+async function deleteProject(id) {
     if (confirm('정말 이 프로젝트를 삭제하시겠습니까?')) {
         SoundManager.playDelete();
         projects = projects.filter(p => p.id !== id);
-        saveToStorage();
+        await saveToStorage();
         renderProjects();
     }
 }
 
-function copyProject(id) {
+async function copyProject(id) {
     const original = projects.find(p => p.id === id);
     if (!original) return;
     const copy = JSON.parse(JSON.stringify(original));
@@ -354,7 +354,7 @@ function copyProject(id) {
     copy.createdAt = new Date().toISOString();
     copy.updatedAt = new Date().toISOString();
     projects.unshift(copy);
-    saveToStorage();
+    await saveToStorage();
     renderProjects();
     SoundManager.playSuccess();
     showToast('프로젝트가 복사되었습니다!', 'success');
@@ -545,15 +545,83 @@ function selectThumbnail(type, value, element) {
     }
 }
 
-window.handleImageUpload = function (input) {
+async function uploadImageToStorage(file) {
+    if (!storage || !currentUser) {
+        // Fallback to base64 if not logged in
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    try {
+        // Create unique filename with timestamp
+        const timestamp = Date.now();
+        const filename = `thumbnails/${currentUser.uid}/${timestamp}_${file.name}`;
+        const storageRef = storage.ref(filename);
+
+        // Show upload progress
+        const uploadTask = storageRef.put(file);
+
+        return new Promise((resolve, reject) => {
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    // Progress monitoring
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    console.log('Upload progress:', progress + '%');
+                },
+                (error) => {
+                    console.error('Upload error:', error);
+                    showToast('이미지 업로드 실패', 'error');
+                    reject(error);
+                },
+                async () => {
+                    // Upload completed, get download URL
+                    const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                    resolve(downloadURL);
+                }
+            );
+        });
+    } catch (error) {
+        console.error('Storage upload error:', error);
+        showToast('이미지 업로드 중 오류 발생', 'error');
+        // Fallback to base64
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(file);
+        });
+    }
+}
+
+window.handleImageUpload = async function (input) {
     const file = input.files[0];
     if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const val = e.target.result;
-            selectThumbnail('image', val, document.getElementById('upload-btn'));
-        };
-        reader.readAsDataURL(file);
+        // Show loading state
+        const uploadBtn = document.getElementById('upload-btn');
+        const preview = document.getElementById('uploaded-preview');
+
+        if (uploadBtn) {
+            uploadBtn.style.opacity = '0.5';
+            uploadBtn.style.pointerEvents = 'none';
+        }
+
+        showToast('이미지 업로드 중...', 'success');
+
+        try {
+            const imageUrl = await uploadImageToStorage(file);
+            selectThumbnail('image', imageUrl, uploadBtn);
+            showToast('이미지 업로드 완료!', 'success');
+        } catch (error) {
+            console.error('Upload failed:', error);
+            showToast('이미지 업로드 실패', 'error');
+        } finally {
+            if (uploadBtn) {
+                uploadBtn.style.opacity = '1';
+                uploadBtn.style.pointerEvents = 'auto';
+            }
+        }
     }
 }
 
@@ -625,7 +693,7 @@ function removeChecklistItem(btn) {
     else showToast('최소 1개의 항목이 필요합니다.', 'error');
 }
 
-function saveProject() {
+async function saveProject() {
     const title = document.getElementById('title').value;
     if (!title) { showToast('이름을 입력하세요.', 'error'); return; }
     const checklist = [];
@@ -655,7 +723,14 @@ function saveProject() {
         projects.unshift({ id: Date.now().toString(), title, category: document.getElementById('category').value, description: document.getElementById('description').value, startDate: document.getElementById('startDate').value, endDate: document.getElementById('endDate').value, checklist, progress: 0, thumbType, thumbValue, thumbPosition: parseFloat(thumbPosition) });
         showToast('생성되었습니다!', 'success');
     }
-    saveToStorage(); renderProjects(); closeModal();
+    try {
+        await saveToStorage();
+        renderProjects();
+        closeModal();
+    } catch (error) {
+        // Error already handled in saveToStorage
+        console.error('Failed to save project:', error);
+    }
 }
 
 function renderDashboard() {
@@ -730,13 +805,14 @@ function showDetailModal(project) {
     lucide.createIcons();
 }
 
-window.updateItemProgress = function (id, idx, action) {
+window.updateItemProgress = async function (id, idx, action) {
     const p = projects.find(x => x.id === id), item = p.checklist[idx], was = p.progress === 100;
     if (action === 'toggle') item.current = item.current >= item.target ? 0 : item.target;
     else if (item.current + action >= 0 && item.current + action <= item.target) item.current += action;
     item.checked = item.current >= item.target;
     p.progress = calculateProgress(p.checklist);
-    saveToStorage(); renderProjects();
+    await saveToStorage();
+    renderProjects();
     const bd = document.getElementById('detail-backdrop'); if (bd) { bd.remove(); showDetailModal(p); }
     if (p.progress === 100 && !was) { SoundManager.playComplete(); triggerConfetti(); showToast('완수했습니다! 🏆', 'success'); }
 }
@@ -760,12 +836,14 @@ function importData(input) {
 }
 
 const firebaseConfig = { apiKey: "AIzaSyD2Z_C1BQbc5wnMLhX1S6vAVctwLbz5lCE", authDomain: "project-manager-43a31.firebaseapp.com", projectId: "project-manager-43a31", storageBucket: "project-manager-43a31.firebasestorage.app", messagingSenderId: "1060810904284", appId: "1:1060810904284:web:e288cdc31a56cbef321a19" };
-let db = null, auth = null, currentUser = null;
+let db = null, auth = null, currentUser = null, storage = null;
 
 function initFirebase() {
     if (!firebaseConfig.apiKey) return;
     firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore(); auth = firebase.auth();
+    db = firebase.firestore();
+    auth = firebase.auth();
+    storage = firebase.storage();
     auth.onAuthStateChanged(user => {
         currentUser = user;
         updateAuthUI(user);
@@ -810,9 +888,27 @@ function updateAuthUI(user) {
     }
 }
 
-function saveToStorage() {
-    if (currentUser && db) db.collection('users').doc(currentUser.uid).set({ projects, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-    else localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+async function saveToStorage() {
+    try {
+        if (currentUser && db) {
+            await db.collection('users').doc(currentUser.uid).set({
+                projects,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } else {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+        }
+    } catch (error) {
+        console.error('Save error:', error);
+        if (error.code === 'resource-exhausted' || error.message?.includes('exceeds the maximum allowed size')) {
+            showToast('프로젝트 데이터가 너무 큽니다. 이미지를 Firebase Storage에 업로드해주세요.', 'error');
+        } else if (error.name === 'QuotaExceededError') {
+            showToast('저장 공간이 부족합니다. 일부 프로젝트를 삭제해주세요.', 'error');
+        } else {
+            showToast('저장 중 오류가 발생했습니다.', 'error');
+        }
+        throw error;
+    }
 }
 
 async function loadProjects() {
