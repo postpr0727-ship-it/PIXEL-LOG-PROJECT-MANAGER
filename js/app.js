@@ -313,7 +313,33 @@ function renderProjects() {
     sectionCompleted.classList.toggle('hidden', !showCompleted);
 
     activeProjects.forEach(project => gridActive.appendChild(createCardElement(project, false)));
-    completedProjects.forEach(project => gridCompleted.appendChild(createCardElement(project, true)));
+
+    // Group Completed Projects by Year
+    const projectsByYear = {};
+    completedProjects.forEach(p => {
+        const year = new Date(p.endDate).getFullYear();
+        if (!projectsByYear[year]) projectsByYear[year] = [];
+        projectsByYear[year].push(p);
+    });
+
+    // Sort Years Descending
+    const years = Object.keys(projectsByYear).sort((a, b) => b - a);
+
+    years.forEach(year => {
+        // Render Year Header
+        const yearHeader = document.createElement('div');
+        yearHeader.className = 'col-span-full flex items-center gap-4 py-8 first:pt-2 opacity-60';
+        yearHeader.innerHTML = `
+            <span class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-gray-600 font-mont">${year}</span>
+            <div class="h-px bg-gradient-to-r from-navy-muted via-navy-muted to-transparent flex-1"></div>
+        `;
+        gridCompleted.appendChild(yearHeader);
+
+        // Render Projects
+        projectsByYear[year].forEach(project => {
+            gridCompleted.appendChild(createCardElement(project, true));
+        });
+    });
 
     lucide.createIcons();
 }
@@ -396,7 +422,7 @@ function calculateProgress(checklist) {
     checklist.forEach(item => {
         const target = item.target || 1;
         const isCalendar = item.isCalendar || item.itemMode === 'calendar';
-        
+
         // Handle calendar items - based on dates count vs target
         if (isCalendar) {
             const dates = item.dates || [];
@@ -432,10 +458,10 @@ function calculateProgress(checklist) {
 function getChecklistStats(checklist) {
     const stats = { pending: 0, in_progress: 0, completed: 0 };
     if (!checklist) return stats;
-    
+
     checklist.forEach(item => {
         const isCalendar = item.isCalendar || item.itemMode === 'calendar';
-        
+
         if (isCalendar) {
             // Calendar items: check this month's dates vs target
             const dates = item.dates || [];
@@ -445,7 +471,7 @@ function getChecklistStats(checklist) {
                 const date = new Date(d);
                 return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
             }).length;
-            
+
             if (thisMonthCount >= target) stats.completed++;
             else if (thisMonthCount > 0) stats.in_progress++;
             else stats.pending++;
@@ -471,7 +497,7 @@ function initThumbnailDragger() {
     const preview = document.getElementById('url-preview-img');
     const dragHint = document.getElementById('drag-hint');
     if (!preview) return;
-    
+
     // Remove existing listeners to prevent duplicates
     const newPreview = preview.cloneNode(true);
     preview.parentNode.replaceChild(newPreview, preview);
@@ -532,7 +558,7 @@ function openModal(editingId = null) {
     const submitBtn = document.getElementById('submit-btn');
     if (submitBtn) submitBtn.innerText = '생성하기';
     setThumbTab('gradient');
-    
+
     // Initialize drag & drop after modal opens
     setTimeout(() => {
         initDragDrop();
@@ -569,7 +595,7 @@ function openModal(editingId = null) {
                         const previewContainer = document.getElementById('url-preview-container');
                         const dragHint = document.getElementById('drag-hint');
                         const uploadPrompt = document.getElementById('upload-prompt');
-                        
+
                         if (previewImg) {
                             previewImg.src = p.thumbValue;
                             previewImg.style.objectPosition = `center ${pos}%`;
@@ -577,7 +603,7 @@ function openModal(editingId = null) {
                         if (previewContainer) previewContainer.classList.remove('hidden');
                         if (dragHint) dragHint.classList.remove('hidden');
                         if (uploadPrompt) uploadPrompt.classList.add('hidden');
-                        
+
                         // Initialize dragger for position adjustment
                         initThumbnailDragger();
                         lucide.createIcons();
@@ -593,7 +619,7 @@ function openModal(editingId = null) {
     const preview = document.getElementById('url-preview-img');
     const previewContainer = document.getElementById('url-preview-container');
     const uploadPrompt = document.getElementById('upload-prompt');
-    
+
     if (preview) {
         preview.src = '';
         preview.style.objectPosition = 'center 50%';
@@ -601,7 +627,7 @@ function openModal(editingId = null) {
     if (previewContainer) previewContainer.classList.add('hidden');
     if (uploadPrompt) uploadPrompt.classList.remove('hidden');
     document.getElementById('selected-thumb-pos').value = 50;
-    
+
     const dragHint = document.getElementById('drag-hint');
     if (dragHint) dragHint.classList.add('hidden');
 
@@ -616,7 +642,7 @@ function setThumbTab(tab) {
     });
     document.getElementById(`thumb-content-${tab}`).classList.remove('hidden');
     document.getElementById(`tab-${tab}`).classList.add('text-primary-gold', 'font-bold');
-    
+
     // Initialize features based on tab
     if (tab === 'gallery') {
         lucide.createIcons();
@@ -718,7 +744,7 @@ window.handleUrlInput = function () {
         previewImg.src = url;
         previewImg.style.objectPosition = 'center 50%';
         document.getElementById('selected-thumb-pos').value = 50;
-        
+
         previewImg.onerror = () => {
             showToast('이미지를 불러올 수 없습니다.\n\nGoogle Drive 이미지인 경우:\n공유 설정을 "링크가 있는 모든 사용자"로 변경해주세요.', 'error');
             previewContainer.classList.add('hidden');
@@ -752,7 +778,7 @@ window.clearUrlPreview = function () {
     if (previewContainer) previewContainer.classList.add('hidden');
     if (uploadPrompt) uploadPrompt.classList.remove('hidden');
     if (dragHint) dragHint.classList.add('hidden');
-    
+
     // Reset thumbnail selection to default gradient
     selectThumbnail('gradient', 'bg-gradient-to-br from-purple-500 to-indigo-500', null);
     document.getElementById('selected-thumb-pos').value = 50;
@@ -767,7 +793,7 @@ function addChecklistItem(text = '', target = 1, itemMode = 'checkbox') {
     const isCounter = itemMode === 'counter';
     const isCalendar = itemMode === 'calendar';
     const isCheckbox = itemMode === 'checkbox';
-    
+
     const row = document.createElement('div');
     row.className = 'flex gap-2 checklist-row items-center py-2 group/row border-b border-navy-muted/30 last:border-0';
     row.innerHTML = `
@@ -848,7 +874,7 @@ async function saveProject() {
         const itemMode = row.querySelector('.item-mode').value;
         const isCounter = itemMode === 'counter';
         const isCalendar = itemMode === 'calendar';
-        
+
         // Get target based on mode
         let target = 1;
         if (isCounter) {
@@ -856,7 +882,7 @@ async function saveProject() {
         } else if (isCalendar) {
             target = parseInt(row.querySelector('.calendar-target').value) || 1;
         }
-        
+
         if (text) checklist.push({
             text,
             isCounter,
@@ -898,19 +924,19 @@ function renderDashboard() {
     const total = projects.length;
     const avg = total > 0 ? Math.round(projects.reduce((s, p) => s + p.progress, 0) / total) : 0;
     const completedProjects = projects.filter(p => p.progress === 100).length;
-    
+
     // Count total in-progress items across all projects
     let totalInProgress = 0;
     projects.forEach(p => {
         const stats = getChecklistStats(p.checklist);
         totalInProgress += stats.in_progress;
     });
-    
+
     document.getElementById('stat-total').innerText = total;
     document.getElementById('stat-completed').innerText = completedProjects;
     document.getElementById('stat-avg').innerText = avg;
     document.getElementById('stat-chart').style.strokeDashoffset = 364.4 - (364.4 * avg) / 100;
-    
+
     // Update in-progress stat if element exists
     const inProgressEl = document.getElementById('stat-in-progress');
     if (inProgressEl) inProgressEl.innerText = totalInProgress;
@@ -945,18 +971,18 @@ function toggleChecklistModal(id) {
 }
 
 function showDetailModal(project) {
-    const safeChecklist = project.checklist.map(i => ({ 
-        ...i, 
-        target: i.target || 1, 
-        current: i.current !== undefined ? i.current : (i.checked ? i.target : 0), 
+    const safeChecklist = project.checklist.map(i => ({
+        ...i,
+        target: i.target || 1,
+        current: i.current !== undefined ? i.current : (i.checked ? i.target : 0),
         isCounter: i.isCounter !== undefined ? i.isCounter : (i.target > 1),
         isCalendar: i.isCalendar || i.itemMode === 'calendar',
         status: i.status || (i.checked ? 'completed' : 'pending'),
         dates: i.dates || []
     }));
-    
+
     const stats = getChecklistStats(project.checklist);
-    
+
     const getStatusUI = (item, idx) => {
         const status = item.status || 'pending';
         const statusConfig = {
@@ -973,7 +999,7 @@ function showDetailModal(project) {
             </button>
         `;
     };
-    
+
     const getCalendarUI = (item, idx) => {
         const dates = item.dates || [];
         const target = item.target || 1;
@@ -982,12 +1008,12 @@ function showDetailModal(project) {
             const date = new Date(d);
             return date.getMonth() === thisMonth.getMonth() && date.getFullYear() === thisMonth.getFullYear();
         }).length;
-        
+
         const progress = Math.round((monthCount / target) * 100);
         const isOver = monthCount >= target;
         const progressColor = isOver ? 'text-success' : 'text-blue-400';
         const bgColor = isOver ? 'bg-success/20' : 'bg-blue-500/20';
-        
+
         return `
             <div class="flex items-center gap-2">
                 <div class="flex flex-col items-end">
@@ -1002,7 +1028,7 @@ function showDetailModal(project) {
             </div>
         `;
     };
-    
+
     const getItemUI = (item, idx) => {
         if (item.isCalendar) return getCalendarUI(item, idx);
         if (item.isCounter) return `
@@ -1014,7 +1040,7 @@ function showDetailModal(project) {
         `;
         return getStatusUI(item, idx);
     };
-    
+
     const html = `
         <div id="detail-backdrop" class="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" onclick="this.remove()">
             <div class="bg-navy-light w-full max-w-lg rounded-xl border border-navy-muted overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
@@ -1061,7 +1087,7 @@ function showDetailModal(project) {
 // Calendar Modal for date tracking
 let calendarState = { projectId: null, itemIdx: null, currentMonth: new Date() };
 
-window.openCalendarModal = function(projectId, itemIdx) {
+window.openCalendarModal = function (projectId, itemIdx) {
     calendarState = { projectId, itemIdx, currentMonth: new Date() };
     renderCalendarModal();
 }
@@ -1071,27 +1097,27 @@ function renderCalendarModal() {
     const project = projects.find(p => p.id === projectId);
     const item = project.checklist[itemIdx];
     const dates = item.dates || [];
-    
+
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-    
+
     // Get first day and total days of month
     const firstDay = new Date(year, month, 1).getDay();
     const totalDays = new Date(year, month + 1, 0).getDate();
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    
+
     // Count this month's records
     const monthDates = dates.filter(d => {
         const date = new Date(d);
         return date.getMonth() === month && date.getFullYear() === year;
     });
-    
+
     // Generate calendar grid
     let calendarHTML = '';
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-    
+
     // Day headers
     calendarHTML += '<div class="grid grid-cols-7 gap-1 mb-2">';
     dayNames.forEach((day, i) => {
@@ -1099,15 +1125,15 @@ function renderCalendarModal() {
         calendarHTML += `<div class="text-center text-xs font-bold ${color} py-1">${day}</div>`;
     });
     calendarHTML += '</div>';
-    
+
     // Calendar days
     calendarHTML += '<div class="grid grid-cols-7 gap-1">';
-    
+
     // Empty cells before first day
     for (let i = 0; i < firstDay; i++) {
         calendarHTML += '<div></div>';
     }
-    
+
     // Days
     for (let day = 1; day <= totalDays; day++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -1117,7 +1143,7 @@ function renderCalendarModal() {
         const dayOfWeek = new Date(year, month, day).getDay();
         const isSunday = dayOfWeek === 0;
         const isSaturday = dayOfWeek === 6;
-        
+
         let classes = 'w-full aspect-square rounded-lg flex items-center justify-center text-sm font-medium transition-all cursor-pointer ';
         if (isFuture) {
             classes += 'text-gray-600 cursor-not-allowed';
@@ -1132,15 +1158,15 @@ function renderCalendarModal() {
         } else {
             classes += 'text-gray-300 hover:bg-navy-muted';
         }
-        
+
         calendarHTML += `<button ${isFuture ? 'disabled' : ''} onclick="toggleCalendarDate('${dateStr}')" class="${classes}">${day}</button>`;
     }
     calendarHTML += '</div>';
-    
+
     // Remove existing calendar modal
     const existing = document.getElementById('calendar-modal');
     if (existing) existing.remove();
-    
+
     const html = `
         <div id="calendar-modal" class="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 backdrop-blur-sm" onclick="this.remove()">
             <div class="bg-navy-light w-full max-w-md rounded-xl border border-navy-muted overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
@@ -1188,23 +1214,23 @@ function renderCalendarModal() {
             </div>
         </div>
     `;
-    
+
     document.body.insertAdjacentHTML('beforeend', html);
     lucide.createIcons();
 }
 
-window.changeCalendarMonth = function(delta) {
+window.changeCalendarMonth = function (delta) {
     calendarState.currentMonth.setMonth(calendarState.currentMonth.getMonth() + delta);
     renderCalendarModal();
 }
 
-window.toggleCalendarDate = async function(dateStr) {
+window.toggleCalendarDate = async function (dateStr) {
     const { projectId, itemIdx } = calendarState;
     const project = projects.find(p => p.id === projectId);
     const item = project.checklist[itemIdx];
-    
+
     if (!item.dates) item.dates = [];
-    
+
     const index = item.dates.indexOf(dateStr);
     if (index > -1) {
         item.dates.splice(index, 1);
@@ -1214,7 +1240,7 @@ window.toggleCalendarDate = async function(dateStr) {
         item.dates.sort();
         SoundManager.playSuccess();
     }
-    
+
     // Update status based on dates count
     if (item.dates.length > 0) {
         item.status = 'in_progress';
@@ -1223,12 +1249,12 @@ window.toggleCalendarDate = async function(dateStr) {
         item.status = 'pending';
         item.current = 0;
     }
-    
+
     project.progress = calculateProgress(project.checklist);
     await saveToStorage();
     renderProjects();
     renderCalendarModal();
-    
+
     // Update detail modal if open
     const detailBackdrop = document.getElementById('detail-backdrop');
     if (detailBackdrop) {
@@ -1238,32 +1264,32 @@ window.toggleCalendarDate = async function(dateStr) {
 }
 
 // Cycle through status: pending -> in_progress -> completed -> pending
-window.cycleItemStatus = async function(id, idx) {
+window.cycleItemStatus = async function (id, idx) {
     const p = projects.find(x => x.id === id);
     const item = p.checklist[idx];
     const was = p.progress === 100;
-    
+
     const statusOrder = ['pending', 'in_progress', 'completed'];
     const currentStatus = item.status || 'pending';
     const currentIndex = statusOrder.indexOf(currentStatus);
     const nextIndex = (currentIndex + 1) % statusOrder.length;
-    
+
     item.status = statusOrder[nextIndex];
     item.checked = item.status === 'completed';
     item.current = item.status === 'completed' ? (item.target || 1) : (item.status === 'in_progress' ? 0.5 : 0);
-    
+
     p.progress = calculateProgress(p.checklist);
     await saveToStorage();
     renderProjects();
-    
+
     const bd = document.getElementById('detail-backdrop');
     if (bd) { bd.remove(); showDetailModal(p); }
-    
+
     SoundManager.playClick();
-    if (p.progress === 100 && !was) { 
-        SoundManager.playComplete(); 
-        triggerConfetti(); 
-        showToast('완수했습니다! 🏆', 'success'); 
+    if (p.progress === 100 && !was) {
+        SoundManager.playComplete();
+        triggerConfetti();
+        showToast('완수했습니다! 🏆', 'success');
     }
 }
 
@@ -1276,14 +1302,14 @@ window.updateItemProgress = async function (id, idx, action) {
         item.current += action;
     }
     item.checked = item.current >= item.target;
-    
+
     // Update status based on current for counter items
     if (item.isCounter) {
         if (item.current >= item.target) item.status = 'completed';
         else if (item.current > 0) item.status = 'in_progress';
         else item.status = 'pending';
     }
-    
+
     p.progress = calculateProgress(p.checklist);
     await saveToStorage();
     renderProjects();
@@ -1319,12 +1345,12 @@ const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 const SUPABASE_BUCKET = 'project-thumbnails';
 
 // Upload Method Toggle
-window.setUploadMethod = function(method) {
+window.setUploadMethod = function (method) {
     const fileTab = document.getElementById('upload-tab-file');
     const urlTab = document.getElementById('upload-tab-url');
     const fileSection = document.getElementById('upload-method-file');
     const urlSection = document.getElementById('upload-method-url');
-    
+
     if (method === 'file') {
         fileTab.className = 'flex-1 py-2 px-3 rounded-md text-sm font-bold bg-primary-gold text-navy-dark transition-all';
         urlTab.className = 'flex-1 py-2 px-3 rounded-md text-sm font-medium text-gray-400 hover:text-white transition-all';
@@ -1342,27 +1368,27 @@ window.setUploadMethod = function(method) {
 // Supabase Storage Upload
 async function uploadToSupabase(file) {
     if (!file) return null;
-    
+
     // Validate file size (max 5MB)
     const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
         showToast('파일 크기는 5MB 이하여야 합니다.', 'error');
         return null;
     }
-    
+
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
         showToast('JPG, PNG, GIF, WebP 파일만 업로드 가능합니다.', 'error');
         return null;
     }
-    
+
     // Generate unique filename
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
     const ext = file.name.split('.').pop();
     const fileName = `thumb_${timestamp}_${randomStr}.${ext}`;
-    
+
     try {
         const { data, error } = await supabaseClient.storage
             .from(SUPABASE_BUCKET)
@@ -1370,18 +1396,18 @@ async function uploadToSupabase(file) {
                 cacheControl: '3600',
                 upsert: false
             });
-        
+
         if (error) {
             console.error('Supabase upload error:', error);
             showToast('업로드 실패: ' + error.message, 'error');
             return null;
         }
-        
+
         // Get public URL
         const { data: urlData } = supabaseClient.storage
             .from(SUPABASE_BUCKET)
             .getPublicUrl(fileName);
-        
+
         return urlData.publicUrl;
     } catch (err) {
         console.error('Upload exception:', err);
@@ -1391,30 +1417,30 @@ async function uploadToSupabase(file) {
 }
 
 // File Upload Handler
-window.handleFileUpload = async function(input) {
+window.handleFileUpload = async function (input) {
     const file = input.files[0];
     if (!file) return;
-    
+
     const uploadPrompt = document.getElementById('upload-prompt');
     const uploadLoading = document.getElementById('upload-loading');
     const previewContainer = document.getElementById('url-preview-container');
     const previewImg = document.getElementById('url-preview-img');
     const dragHint = document.getElementById('drag-hint');
-    
+
     // Show loading state
     if (uploadPrompt) uploadPrompt.classList.add('hidden');
     if (uploadLoading) uploadLoading.classList.remove('hidden');
-    
+
     try {
         const imageUrl = await uploadToSupabase(file);
-        
+
         if (imageUrl) {
             // Show preview
             if (previewImg) {
                 previewImg.src = imageUrl;
                 previewImg.style.objectPosition = 'center 50%';
                 document.getElementById('selected-thumb-pos').value = 50;
-                
+
                 previewImg.onload = () => {
                     if (previewContainer) previewContainer.classList.remove('hidden');
                     if (dragHint) dragHint.classList.remove('hidden');
@@ -1439,26 +1465,26 @@ window.handleFileUpload = async function(input) {
 function initDragDrop() {
     const dropZone = document.getElementById('file-drop-zone');
     if (!dropZone) return;
-    
+
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, (e) => {
             e.preventDefault();
             e.stopPropagation();
         });
     });
-    
+
     ['dragenter', 'dragover'].forEach(eventName => {
         dropZone.addEventListener(eventName, () => {
             dropZone.classList.add('border-primary-gold', 'bg-primary-gold/10');
         });
     });
-    
+
     ['dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, () => {
             dropZone.classList.remove('border-primary-gold', 'bg-primary-gold/10');
         });
     });
-    
+
     dropZone.addEventListener('drop', (e) => {
         const files = e.dataTransfer.files;
         if (files.length > 0) {
